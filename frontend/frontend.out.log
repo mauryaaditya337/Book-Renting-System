@@ -1,0 +1,27 @@
+
+> p2p-book-renting-frontend@1.0.0 dev
+> next dev
+
+   ▲ Next.js 15.5.14
+   - Local:        http://localhost:3000
+   - Network:      http://10.96.182.163:3000
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 11.1s
+ ○ Compiling / ...
+ ✓ Compiled /owner-rentals in 27.2s (628 modules)
+ GET /owner-rentals 200 in 20659ms
+ GET / 200 in 321ms
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 845ms (114 modules)
+ ○ Compiling /books ...
+ ✓ Compiled /books in 1954ms (617 modules)
+ GET /books 200 in 2754ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 5s (613 modules)
+ GET / 404 in 7200ms
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 2.1s (959 modules)
+ GET / 500 in 5947ms
+ GET / 500 in 609ms
