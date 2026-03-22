@@ -1,4 +1,7 @@
 {
+  "engines": {
+    "node":"22.15.1"
+  },
   "name": "p2p-book-renting-backend",
   "version": "1.0.0",
   "description": "Backend authentication module for a P2P Book Renting System",
