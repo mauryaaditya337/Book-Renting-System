@@ -1,5 +1,6 @@
 const GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes";
 const OPEN_LIBRARY_API_URL = "https://openlibrary.org/api/books";
+const OPEN_LIBRARY_COVERS_API_URL = "https://covers.openlibrary.org/b/isbn";
 
 const normalizeIsbn = (value = "") => value.replace(/[^0-9Xx]/g, "").toUpperCase();
 
@@ -74,7 +75,34 @@ const normalizeBookMetadata = ({
 });
 
 const hasUsefulMetadata = (metadata) =>
-  Boolean(metadata && metadata.title && metadata.author);
+  Boolean(
+    metadata &&
+      (metadata.title ||
+        metadata.author ||
+        metadata.description ||
+        metadata.category ||
+        metadata.imageUrl ||
+        metadata.publisher ||
+        metadata.publishedDate)
+  );
+
+const buildOpenLibraryCoverUrl = (isbn) =>
+  `${OPEN_LIBRARY_COVERS_API_URL}/${encodeURIComponent(isbn)}-L.jpg`;
+
+const mergeMetadata = (isbn, googleMetadata, openLibraryMetadata) =>
+  normalizeBookMetadata({
+    title: googleMetadata?.title || openLibraryMetadata?.title || "",
+    author: googleMetadata?.author || openLibraryMetadata?.author || "",
+    isbn,
+    category: googleMetadata?.category || openLibraryMetadata?.category || "",
+    description: googleMetadata?.description || openLibraryMetadata?.description || "",
+    imageUrl:
+      googleMetadata?.imageUrl ||
+      openLibraryMetadata?.imageUrl ||
+      buildOpenLibraryCoverUrl(isbn),
+    publisher: googleMetadata?.publisher || openLibraryMetadata?.publisher || "",
+    publishedDate: googleMetadata?.publishedDate || openLibraryMetadata?.publishedDate || ""
+  });
 
 const lookupWithGoogleBooks = async (isbn) => {
   const response = await fetch(`${GOOGLE_BOOKS_API_URL}?q=isbn:${encodeURIComponent(isbn)}`);
@@ -151,27 +179,27 @@ const lookupWithOpenLibrary = async (isbn) => {
 
 const getBookMetadataByIsbn = async (rawIsbn) => {
   const isbn = validateAndNormalizeIsbn(rawIsbn);
-
   const lookupErrors = [];
 
-  try {
-    const googleMetadata = await lookupWithGoogleBooks(isbn);
+  let googleMetadata = null;
+  let openLibraryMetadata = null;
 
-    if (hasUsefulMetadata(googleMetadata)) {
-      return googleMetadata;
-    }
+  try {
+    googleMetadata = await lookupWithGoogleBooks(isbn);
   } catch (error) {
-    lookupErrors.push(error.message);
+    lookupErrors.push(`Google Books: ${error.message}`);
   }
 
   try {
-    const openLibraryMetadata = await lookupWithOpenLibrary(isbn);
-
-    if (hasUsefulMetadata(openLibraryMetadata)) {
-      return openLibraryMetadata;
-    }
+    openLibraryMetadata = await lookupWithOpenLibrary(isbn);
   } catch (error) {
-    lookupErrors.push(error.message);
+    lookupErrors.push(`Open Library: ${error.message}`);
+  }
+
+  const mergedMetadata = mergeMetadata(isbn, googleMetadata, openLibraryMetadata);
+
+  if (hasUsefulMetadata(googleMetadata) || hasUsefulMetadata(openLibraryMetadata)) {
+    return mergedMetadata;
   }
 
   const error = new Error("No useful metadata found for the provided ISBN");
