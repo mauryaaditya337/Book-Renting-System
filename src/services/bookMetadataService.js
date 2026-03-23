@@ -1,6 +1,9 @@
 const GOOGLE_BOOKS_API_URL = "https://www.googleapis.com/books/v1/volumes";
 const OPEN_LIBRARY_API_URL = "https://openlibrary.org/api/books";
 const OPEN_LIBRARY_COVERS_API_URL = "https://covers.openlibrary.org/b/isbn";
+const LOOKUP_TIMEOUT_MS = 5000;
+const METADATA_CACHE_TTL_MS = 15 * 60 * 1000;
+const metadataCache = new Map();
 
 const normalizeIsbn = (value = "") => value.replace(/[^0-9Xx]/g, "").toUpperCase();
 
@@ -89,6 +92,65 @@ const hasUsefulMetadata = (metadata) =>
 const buildOpenLibraryCoverUrl = (isbn) =>
   `${OPEN_LIBRARY_COVERS_API_URL}/${encodeURIComponent(isbn)}-L.jpg`;
 
+const getCachedMetadata = (isbn) => {
+  const cachedEntry = metadataCache.get(isbn);
+
+  if (!cachedEntry) {
+    return null;
+  }
+
+  if (cachedEntry.expiresAt <= Date.now()) {
+    metadataCache.delete(isbn);
+    return null;
+  }
+
+  return cachedEntry.metadata;
+};
+
+const setCachedMetadata = (isbn, metadata) => {
+  metadataCache.set(isbn, {
+    metadata,
+    expiresAt: Date.now() + METADATA_CACHE_TTL_MS
+  });
+};
+
+const createLookupError = (message, code) => {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+};
+
+const fetchJsonWithTimeout = async (url, sourceName) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        throw createLookupError(`${sourceName} is temporarily rate limited`, "RATE_LIMITED");
+      }
+
+      throw createLookupError(`${sourceName} request failed with status ${response.status}`, "HTTP_ERROR");
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw createLookupError(`${sourceName} request timed out`, "TIMEOUT");
+    }
+
+    if (error?.code) {
+      throw error;
+    }
+
+    throw createLookupError(`${sourceName} request could not be completed`, "NETWORK_ERROR");
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 const mergeMetadata = (isbn, googleMetadata, openLibraryMetadata) =>
   normalizeBookMetadata({
     title: googleMetadata?.title || openLibraryMetadata?.title || "",
@@ -105,13 +167,10 @@ const mergeMetadata = (isbn, googleMetadata, openLibraryMetadata) =>
   });
 
 const lookupWithGoogleBooks = async (isbn) => {
-  const response = await fetch(`${GOOGLE_BOOKS_API_URL}?q=isbn:${encodeURIComponent(isbn)}`);
-
-  if (!response.ok) {
-    throw new Error(`Google Books request failed with status ${response.status}`);
-  }
-
-  const payload = await response.json();
+  const payload = await fetchJsonWithTimeout(
+    `${GOOGLE_BOOKS_API_URL}?q=isbn:${encodeURIComponent(isbn)}`,
+    "Google Books"
+  );
   const volume = pickFirst(payload.items);
   const info = volume?.volumeInfo;
 
@@ -135,13 +194,7 @@ const lookupWithOpenLibrary = async (isbn) => {
   const url =
     `${OPEN_LIBRARY_API_URL}?bibkeys=ISBN:${encodeURIComponent(isbn)}` +
     "&format=json&jscmd=details";
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Open Library request failed with status ${response.status}`);
-  }
-
-  const payload = await response.json();
+  const payload = await fetchJsonWithTimeout(url, "Open Library");
   const book = payload[`ISBN:${isbn}`];
   const details = book?.details;
 
@@ -179,6 +232,12 @@ const lookupWithOpenLibrary = async (isbn) => {
 
 const getBookMetadataByIsbn = async (rawIsbn) => {
   const isbn = validateAndNormalizeIsbn(rawIsbn);
+  const cachedMetadata = getCachedMetadata(isbn);
+
+  if (cachedMetadata) {
+    return cachedMetadata;
+  }
+
   const lookupErrors = [];
 
   let googleMetadata = null;
@@ -199,13 +258,16 @@ const getBookMetadataByIsbn = async (rawIsbn) => {
   const mergedMetadata = mergeMetadata(isbn, googleMetadata, openLibraryMetadata);
 
   if (hasUsefulMetadata(googleMetadata) || hasUsefulMetadata(openLibraryMetadata)) {
+    setCachedMetadata(isbn, mergedMetadata);
     return mergedMetadata;
   }
 
-  const error = new Error("No useful metadata found for the provided ISBN");
+  const error = new Error(
+    "Could not fetch book details from available sources. Please retry or enter details manually."
+  );
   error.statusCode = 404;
   error.details = lookupErrors.length
-    ? [{ field: "isbn", message: lookupErrors.join(" | ") }]
+    ? [{ field: "isbn", message: "Metadata providers did not return usable book details." }]
     : undefined;
   throw error;
 };
