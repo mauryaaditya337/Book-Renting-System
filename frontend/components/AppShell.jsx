@@ -16,6 +16,7 @@ export function AppShell({ children }) {
   ];
   const renterLinks = [
     { href: "/my-requests", label: "My Requests" },
+    { href: "/my-book-requests", label: "My Book Requests" },
     { href: "/active-rentals", label: "Active Rentals" }
   ];
   const ownerLinks = [
@@ -50,7 +51,10 @@ export function AppShell({ children }) {
                 {isAuthenticated ? (
                   <>
                     <div className="rounded-2xl border border-teal-100 bg-teal-50 px-4 py-2 text-teal-800">
-                      Signed in as <span className="font-semibold">{user?.name || "Reader"}</span>
+                      Signed in as{" "}
+                      <span className="font-semibold">
+                        {user?.fullName || user?.name || "Reader"}
+                      </span>
                     </div>
                     <button
                       type="button"

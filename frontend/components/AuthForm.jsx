@@ -7,7 +7,13 @@ import { useState } from "react";
 import { AuthCard } from "@/components/AuthCard";
 import { useAuth } from "@/components/AuthProvider";
 
-const initialSignupData = { name: "", email: "", password: "" };
+const initialSignupData = {
+  fullName: "",
+  collegeName: "",
+  phoneNumber: "",
+  email: "",
+  password: ""
+};
 const initialLoginData = { email: "", password: "" };
 
 export function AuthForm({ mode }) {
@@ -37,7 +43,7 @@ export function AuthForm({ mode }) {
 
     try {
       if (mode === "signup") {
-        await signup(formData.name, formData.email, formData.password);
+        await signup(formData);
         setSuccessMessage("Signup successful. You can log in now.");
         setFormData(initialSignupData);
         router.push("/login?signup=success");
@@ -60,19 +66,36 @@ export function AuthForm({ mode }) {
       title={isSignup ? "Create your account" : "Welcome back"}
       subtitle={
         isSignup
-          ? "Sign up with your name, email, and password to start using the book renting platform."
+          ? "Sign up with your trust details, email, and password to start using the book renting platform."
           : "Log in with your existing account to view your protected profile page."
       }
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
         {isSignup ? (
-          <InputField
-            label="Full name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="Asha Reader"
-          />
+          <>
+            <InputField
+              label="Full name"
+              name="fullName"
+              value={formData.fullName}
+              onChange={handleChange}
+              placeholder="Asha Reader"
+            />
+            <InputField
+              label="College name"
+              name="collegeName"
+              value={formData.collegeName}
+              onChange={handleChange}
+              placeholder="Savitribai Phule Pune University"
+            />
+            <InputField
+              label="Phone number"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              placeholder="9876543210"
+              required={false}
+            />
+          </>
         ) : null}
 
         <InputField
@@ -138,6 +161,7 @@ function InputField({
   name,
   onChange,
   placeholder,
+  required = true,
   type = "text",
   value
 }) {
@@ -145,7 +169,7 @@ function InputField({
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
       <input
-        required
+        required={required}
         name={name}
         type={type}
         value={value}

@@ -24,8 +24,8 @@ const STATUS_FILTERS = [
   { value: "", label: "All" },
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
+  { value: "active", label: "Active" },
   { value: "rejected", label: "Rejected" },
-  { value: "return_pending", label: "Return Pending" },
   { value: "completed", label: "Completed" }
 ];
 
@@ -40,6 +40,8 @@ export function IncomingRequestsView() {
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [activeRequestId, setActiveRequestId] = useState("");
+  const [rejectingRequestId, setRejectingRequestId] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
     let isActive = true;
@@ -100,7 +102,7 @@ export function IncomingRequestsView() {
     setActionError("");
   };
 
-  const handleAction = async (requestId, action) => {
+  const handleAction = async (requestId, action, payload = undefined) => {
     if (!token) {
       return;
     }
@@ -114,7 +116,8 @@ export function IncomingRequestsView() {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`
-        }
+        },
+        body: payload ? JSON.stringify(payload) : undefined
       });
 
       setRequests((current) =>
@@ -132,6 +135,27 @@ export function IncomingRequestsView() {
     } finally {
       setActiveRequestId("");
     }
+  };
+
+  const handleRejectStart = (requestId) => {
+    setRejectingRequestId(requestId);
+    setRejectionReason("");
+    setActionError("");
+    setActionMessage("");
+  };
+
+  const handleRejectCancel = () => {
+    setRejectingRequestId("");
+    setRejectionReason("");
+    setActionError("");
+  };
+
+  const handleRejectSubmit = async (requestId) => {
+    await handleAction(requestId, "reject", {
+      rejectionReason
+    });
+    setRejectingRequestId("");
+    setRejectionReason("");
   };
 
   return (
@@ -206,6 +230,7 @@ export function IncomingRequestsView() {
               {requests.map((request) => {
                 const isPending = request.status === "pending";
                 const isSubmitting = activeRequestId === request.id;
+                const isRejectingThisRequest = rejectingRequestId === request.id;
 
                 return (
                 <article
@@ -279,7 +304,7 @@ export function IncomingRequestsView() {
                               <button
                                 type="button"
                                 disabled={isSubmitting}
-                                onClick={() => handleAction(request.id, "reject")}
+                                onClick={() => handleRejectStart(request.id)}
                                 className="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                               >
                                 {isSubmitting ? "Updating..." : "Reject"}
@@ -289,6 +314,48 @@ export function IncomingRequestsView() {
                         </div>
                       </div>
                     </div>
+
+                    {request.status === "rejected" && request.rejectionReason ? (
+                      <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        <p className="font-medium">Rejection reason</p>
+                        <p className="mt-1">{request.rejectionReason}</p>
+                      </div>
+                    ) : null}
+
+                    {isRejectingThisRequest ? (
+                      <div className="mt-4 rounded-[1.5rem] border border-rose-200 bg-rose-50 p-4">
+                        <label className="block">
+                          <span className="mb-2 block text-sm font-medium text-rose-900">
+                            Rejection reason
+                          </span>
+                          <textarea
+                            value={rejectionReason}
+                            onChange={(event) => setRejectionReason(event.target.value)}
+                            rows={3}
+                            className="w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                            placeholder="Tell the renter why this request cannot be approved."
+                          />
+                        </label>
+                        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                          <button
+                            type="button"
+                            disabled={isSubmitting || !rejectionReason.trim()}
+                            onClick={() => handleRejectSubmit(request.id)}
+                            className="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                          >
+                            {isSubmitting ? "Rejecting..." : "Confirm rejection"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={handleRejectCancel}
+                            className="rounded-2xl bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </article>
                 );
               })}

@@ -7,6 +7,27 @@ import { apiRequest } from "@/lib/api";
 
 const AuthContext = createContext(null);
 
+function normalizeUserProfile(user) {
+  if (!user) {
+    return null;
+  }
+
+  return {
+    ...user,
+    fullName: user.fullName || user.name || "",
+    collegeName: user.collegeName || "",
+    phoneNumber: user.phoneNumber || user.phone || "",
+    name: user.name || user.fullName || "",
+    phone: user.phone || user.phoneNumber || "",
+    city: user.city || "",
+    state: user.state || "",
+    address: user.address || "",
+    bio: user.bio || "",
+    qualification: user.qualification || "",
+    currentDegree: user.currentDegree || ""
+  };
+}
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
@@ -20,8 +41,9 @@ export function AuthProvider({ children }) {
       cache: "no-store"
     });
 
-    setUser(data.user);
-    return data.user;
+    const normalizedUser = normalizeUserProfile(data.user);
+    setUser(normalizedUser);
+    return normalizedUser;
   };
 
   useEffect(() => {
@@ -56,10 +78,21 @@ export function AuthProvider({ children }) {
     await fetchProfile(data.token);
   };
 
-  const signup = async (name, email, password) => {
+  const signup = async ({ fullName, email, password, collegeName, phoneNumber }) => {
+    const payload = {
+      fullName: fullName.trim(),
+      email,
+      password,
+      collegeName: collegeName.trim()
+    };
+
+    if (phoneNumber?.trim()) {
+      payload.phoneNumber = phoneNumber.trim();
+    }
+
     await apiRequest("/users/signup", {
       method: "POST",
-      body: JSON.stringify({ name, email, password })
+      body: JSON.stringify(payload)
     });
   };
 

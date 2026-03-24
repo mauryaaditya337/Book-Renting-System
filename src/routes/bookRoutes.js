@@ -26,8 +26,12 @@ const allowedBookFields = [
   "description",
   "condition",
   "rentalPrice",
+  "listingType",
+  "salePrice",
   "securityDeposit",
   "location",
+  "meetupLocation",
+  "depositNote",
   "availabilityStatus",
   "images",
   "imageUrl"
@@ -40,14 +44,19 @@ const allowedCreateBookFields = [
   "description",
   "condition",
   "rentalPrice",
+  "listingType",
+  "salePrice",
   "securityDeposit",
   "location",
+  "meetupLocation",
+  "depositNote",
   "images",
   "imageUrl"
 ];
 
 const allowedConditions = ["New", "Like New", "Good", "Fair", "Poor"];
-const allowedAvailabilityStatuses = ["available", "unavailable", "rented"];
+const allowedAvailabilityStatuses = ["available", "reserved", "rented", "sold"];
+const allowedListingTypes = ["rent", "sell", "both"];
 const allowedBookQueryParams = ["search", "category", "location", "sortBy", "sortOrder", "page", "limit"];
 
 const validateBookImagesPayload = (payload, { required = false } = {}) => {
@@ -74,6 +83,39 @@ const validateBookImagesPayload = (payload, { required = false } = {}) => {
   }
 
   validateImages(normalizedImages, { required });
+  return true;
+};
+
+const validateListingTypePayload = (payload, { requireCompletePricing = false } = {}) => {
+  if (!payload || Array.isArray(payload) || typeof payload !== "object") {
+    return true;
+  }
+
+  const listingType = payload.listingType || "rent";
+  const hasRentalPrice = Object.prototype.hasOwnProperty.call(payload, "rentalPrice");
+  const hasSalePrice = Object.prototype.hasOwnProperty.call(payload, "salePrice");
+  const hasSecurityDeposit = Object.prototype.hasOwnProperty.call(payload, "securityDeposit");
+
+  if (listingType === "sell") {
+    if (requireCompletePricing && !hasSalePrice) {
+      throw new Error("Sale price is required for sell listings");
+    }
+
+    return true;
+  }
+
+  if (listingType === "both") {
+    if (requireCompletePricing && (!hasRentalPrice || !hasSalePrice || !hasSecurityDeposit)) {
+      throw new Error("Rental price, security deposit, and sale price are required for listings available for rent and sale");
+    }
+
+    return true;
+  }
+
+  if (requireCompletePricing && (!hasRentalPrice || !hasSecurityDeposit)) {
+    throw new Error("Rental price and security deposit are required for rent listings");
+  }
+
   return true;
 };
 
@@ -231,6 +273,11 @@ const updateBookValidation = [
     .isFloat({ min: 0 })
     .withMessage("Rental price must be a number greater than or equal to 0")
     .toFloat(),
+  body("salePrice")
+    .optional({ nullable: true })
+    .isFloat({ min: 0 })
+    .withMessage("Sale price must be a number greater than or equal to 0")
+    .toFloat(),
   body("securityDeposit")
     .optional()
     .isFloat({ min: 0 })
@@ -244,6 +291,26 @@ const updateBookValidation = [
     .trim()
     .notEmpty()
     .withMessage("Location cannot be empty"),
+  body("meetupLocation")
+    .optional()
+    .isString()
+    .withMessage("Meetup instructions must be a string")
+    .bail()
+    .trim(),
+  body("depositNote")
+    .optional()
+    .isString()
+    .withMessage("Deposit note must be a string")
+    .bail()
+    .trim(),
+  body("listingType")
+    .optional()
+    .isString()
+    .withMessage("Listing type must be a string")
+    .bail()
+    .trim()
+    .isIn(allowedListingTypes)
+    .withMessage("Listing type must be one of: rent, sell, both"),
   body("availabilityStatus")
     .optional()
     .isString()
@@ -251,8 +318,12 @@ const updateBookValidation = [
     .bail()
     .trim()
     .isIn(allowedAvailabilityStatuses)
-    .withMessage("Availability status must be one of: available, unavailable, rented"),
-  body().custom((value) => validateBookImagesPayload(value, { required: false }))
+    .withMessage("Availability status must be one of: available, reserved, rented, sold"),
+  body().custom((value) => {
+    validateBookImagesPayload(value, { required: false });
+    validateListingTypePayload(value, { requireCompletePricing: false });
+    return true;
+  })
 ];
 
 const createBookValidation = [
@@ -334,16 +405,17 @@ const createBookValidation = [
     .isIn(allowedConditions)
     .withMessage("Condition must be one of: New, Like New, Good, Fair, Poor"),
   body("rentalPrice")
-    .exists()
-    .withMessage("Rental price is required")
-    .bail()
+    .optional()
     .isFloat({ min: 0 })
     .withMessage("Rental price must be a number greater than or equal to 0")
     .toFloat(),
+  body("salePrice")
+    .optional({ nullable: true })
+    .isFloat({ min: 0 })
+    .withMessage("Sale price must be a number greater than or equal to 0")
+    .toFloat(),
   body("securityDeposit")
-    .exists()
-    .withMessage("Security deposit is required")
-    .bail()
+    .optional()
     .isFloat({ min: 0 })
     .withMessage("Security deposit must be a number greater than or equal to 0")
     .toFloat(),
@@ -357,7 +429,31 @@ const createBookValidation = [
     .trim()
     .notEmpty()
     .withMessage("Location is required"),
-  body().custom((value) => validateBookImagesPayload(value, { required: true }))
+  body("meetupLocation")
+    .optional()
+    .isString()
+    .withMessage("Meetup instructions must be a string")
+    .bail()
+    .trim(),
+  body("depositNote")
+    .optional()
+    .isString()
+    .withMessage("Deposit note must be a string")
+    .bail()
+    .trim(),
+  body("listingType")
+    .optional()
+    .isString()
+    .withMessage("Listing type must be a string")
+    .bail()
+    .trim()
+    .isIn(allowedListingTypes)
+    .withMessage("Listing type must be one of: rent, sell, both"),
+  body().custom((value) => {
+    validateBookImagesPayload(value, { required: true });
+    validateListingTypePayload(value, { requireCompletePricing: true });
+    return true;
+  })
 ];
 
 router.get("/", browseBooksValidation, getBooks);

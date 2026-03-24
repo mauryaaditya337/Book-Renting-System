@@ -2,9 +2,12 @@ import Link from "next/link";
 
 import { BookCover } from "@/components/BookCover";
 import { getPrimaryBookImage } from "@/lib/bookImages";
-import { formatPrice, getAvailabilityTone, toTitleCase } from "@/lib/books";
+import { getAvailabilityTone, getListingPriceSummary, toTitleCase } from "@/lib/books";
 
 export function BookCard({ book }) {
+  const priceSummary = getListingPriceSummary(book);
+  const availabilityStatus = book.availabilityStatus || "available";
+
   return (
     <Link
       href={`/books/${book.id}`}
@@ -28,15 +31,15 @@ export function BookCard({ book }) {
         </div>
         <span
           className={`rounded-full border px-3 py-1 text-xs font-medium ${getAvailabilityTone(
-            book.availabilityStatus
+            availabilityStatus
           )}`}
         >
-          {toTitleCase(book.availabilityStatus)}
+          {toTitleCase(availabilityStatus)}
         </span>
       </div>
 
       <div className="mt-6 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
-        <DetailChip label="Rental price" value={formatPrice(book.rentalPrice)} />
+        <DetailChip label={priceSummary.primaryLabel} value={priceSummary.primaryValue} />
         <DetailChip label="Location" value={book.location} />
       </div>
 

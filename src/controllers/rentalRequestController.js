@@ -11,6 +11,7 @@ const normalizeDate = (value) => {
 const formatRentalRequestResponse = (rentalRequest) => ({
   id: rentalRequest._id,
   status: rentalRequest.status,
+  rejectionReason: rentalRequest.rejectionReason || "",
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
   book: {
@@ -24,6 +25,8 @@ const formatRentalRequestResponse = (rentalRequest) => ({
   owner: {
     id: rentalRequest.owner._id,
     name: rentalRequest.owner.name,
+    fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
+    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || "",
     email: rentalRequest.owner.email
   },
   renter: {
@@ -38,6 +41,7 @@ const formatRentalRequestResponse = (rentalRequest) => ({
 const formatRentalRequestActionResponse = (rentalRequest) => ({
   id: rentalRequest._id,
   status: rentalRequest.status,
+  rejectionReason: rentalRequest.rejectionReason || "",
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
   book: {
@@ -57,9 +61,10 @@ const formatRentalRequestActionResponse = (rentalRequest) => ({
   updatedAt: rentalRequest.updatedAt
 });
 
-const formatReturnInitiationResponse = (rentalRequest) => ({
+const formatRentalRequestRenterActionResponse = (rentalRequest) => ({
   id: rentalRequest._id,
   status: rentalRequest.status,
+  rejectionReason: rentalRequest.rejectionReason || "",
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
   book: {
@@ -73,6 +78,8 @@ const formatReturnInitiationResponse = (rentalRequest) => ({
   owner: {
     id: rentalRequest.owner._id,
     name: rentalRequest.owner.name,
+    fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
+    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || "",
     email: rentalRequest.owner.email
   },
   createdAt: rentalRequest.createdAt,
@@ -82,6 +89,7 @@ const formatReturnInitiationResponse = (rentalRequest) => ({
 const formatOwnerActiveRentalResponse = (rentalRequest) => ({
   id: rentalRequest._id,
   status: rentalRequest.status,
+  rejectionReason: rentalRequest.rejectionReason || "",
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
   createdAt: rentalRequest.createdAt,
@@ -103,6 +111,7 @@ const formatOwnerActiveRentalResponse = (rentalRequest) => ({
 const formatRenterActiveRentalResponse = (rentalRequest) => ({
   id: rentalRequest._id,
   status: rentalRequest.status,
+  rejectionReason: rentalRequest.rejectionReason || "",
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
   createdAt: rentalRequest.createdAt,
@@ -117,6 +126,8 @@ const formatRenterActiveRentalResponse = (rentalRequest) => ({
   owner: {
     id: rentalRequest.owner._id,
     name: rentalRequest.owner.name,
+    fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
+    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || "",
     email: rentalRequest.owner.email
   }
 });
@@ -124,6 +135,7 @@ const formatRenterActiveRentalResponse = (rentalRequest) => ({
 const formatIncomingRentalRequestListItem = (rentalRequest) => ({
   id: rentalRequest._id,
   status: rentalRequest.status,
+  rejectionReason: rentalRequest.rejectionReason || "",
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
   createdAt: rentalRequest.createdAt,
@@ -145,6 +157,7 @@ const formatIncomingRentalRequestListItem = (rentalRequest) => ({
 const formatOutgoingRentalRequestListItem = (rentalRequest) => ({
   id: rentalRequest._id,
   status: rentalRequest.status,
+  rejectionReason: rentalRequest.rejectionReason || "",
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
   createdAt: rentalRequest.createdAt,
@@ -159,6 +172,29 @@ const formatOutgoingRentalRequestListItem = (rentalRequest) => ({
   owner: {
     id: rentalRequest.owner._id,
     name: rentalRequest.owner.name,
+    fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
+    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || "",
+    email: rentalRequest.owner.email
+  }
+});
+
+const formatOwnBookRentalRequestResponse = (rentalRequest) => ({
+  id: rentalRequest._id,
+  status: rentalRequest.status,
+  rejectionReason: rentalRequest.rejectionReason || "",
+  startDate: rentalRequest.startDate,
+  endDate: rentalRequest.endDate,
+  createdAt: rentalRequest.createdAt,
+  updatedAt: rentalRequest.updatedAt,
+  book: {
+    id: rentalRequest.book._id,
+    title: rentalRequest.book.title
+  },
+  owner: {
+    id: rentalRequest.owner._id,
+    name: rentalRequest.owner.name,
+    fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
+    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || "",
     email: rentalRequest.owner.email
   }
 });
@@ -169,7 +205,8 @@ const buildRentalRequestListMeta = (page, limit, totalRequests) => ({
   totalPages: Math.max(1, Math.ceil(totalRequests / limit))
 });
 
-const ownerActiveRentalStatuses = ["approved", "return_pending"];
+const ownerActiveRentalStatuses = ["approved", "active"];
+const renterActiveRentalStatuses = ["active"];
 
 const getRentalRequestForOwnerAction = async (requestId, userId) => {
   const rentalRequest = await RentalRequest.findById(requestId)
@@ -194,7 +231,7 @@ const getRentalRequestForOwnerAction = async (requestId, userId) => {
 const getRentalRequestForRenterAction = async (requestId, userId) => {
   const rentalRequest = await RentalRequest.findById(requestId)
     .populate("book", "title author category rentalPrice securityDeposit")
-    .populate("owner", "name email");
+    .populate("owner", "fullName name phoneNumber phone email");
 
   if (!rentalRequest) {
     const error = new Error("Rental request not found");
@@ -223,6 +260,7 @@ const approveRentalRequest = asyncHandler(async (req, res) => {
   }
 
   rentalRequest.status = "approved";
+  rentalRequest.rejectionReason = "";
   await rentalRequest.save();
 
   await RentalRequest.updateMany(
@@ -237,7 +275,7 @@ const approveRentalRequest = asyncHandler(async (req, res) => {
   );
 
   await Book.findByIdAndUpdate(rentalRequest.book._id, {
-    $set: { availabilityStatus: "rented" }
+    $set: { availabilityStatus: "reserved" }
   });
 
   const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
@@ -255,13 +293,22 @@ const rejectRentalRequest = asyncHandler(async (req, res) => {
 
   const rentalRequest = await getRentalRequestForOwnerAction(req.params.id, req.user._id);
 
+  const rejectionReason = String(req.body.rejectionReason || "").trim();
+
   if (rentalRequest.status !== "pending") {
     const error = new Error("Only pending rental requests can be rejected");
     error.statusCode = 400;
     throw error;
   }
 
+  if (!rejectionReason) {
+    const error = new Error("Rejection reason is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
   rentalRequest.status = "rejected";
+  rentalRequest.rejectionReason = rejectionReason;
   await rentalRequest.save();
 
   const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
@@ -274,13 +321,13 @@ const rejectRentalRequest = asyncHandler(async (req, res) => {
   });
 });
 
-const initiateRentalReturn = asyncHandler(async (req, res) => {
+const startRentalRequest = asyncHandler(async (req, res) => {
   validateRequest(req);
 
   const rentalRequest = await getRentalRequestForRenterAction(req.params.id, req.user._id);
 
-  if (rentalRequest.status === "return_pending") {
-    const error = new Error("Return has already been initiated for this rental request");
+  if (rentalRequest.status === "active") {
+    const error = new Error("This rental request has already been started");
     error.statusCode = 400;
     throw error;
   }
@@ -292,28 +339,32 @@ const initiateRentalReturn = asyncHandler(async (req, res) => {
   }
 
   if (rentalRequest.status !== "approved") {
-    const error = new Error("Only active approved rental requests can be returned");
+    const error = new Error("Only approved rental requests can be started");
     error.statusCode = 400;
     throw error;
   }
 
-  rentalRequest.status = "return_pending";
+  rentalRequest.status = "active";
   await rentalRequest.save();
+
+  await Book.findByIdAndUpdate(rentalRequest.book._id, {
+    $set: { availabilityStatus: "rented" }
+  });
 
   const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
     .populate("book", "title author category rentalPrice securityDeposit")
-    .populate("owner", "name email");
+    .populate("owner", "fullName name phoneNumber phone email");
 
   res.status(200).json({
-    message: "Return initiated successfully",
-    rentalRequest: formatReturnInitiationResponse(updatedRentalRequest)
+    message: "Rental started successfully",
+    rentalRequest: formatRentalRequestRenterActionResponse(updatedRentalRequest)
   });
 });
 
-const confirmRentalReturn = asyncHandler(async (req, res) => {
+const completeRentalRequest = asyncHandler(async (req, res) => {
   validateRequest(req);
 
-  const rentalRequest = await getRentalRequestForOwnerAction(req.params.id, req.user._id);
+  const rentalRequest = await getRentalRequestForRenterAction(req.params.id, req.user._id);
 
   if (rentalRequest.status === "completed") {
     const error = new Error("This rental request has already been completed");
@@ -321,8 +372,8 @@ const confirmRentalReturn = asyncHandler(async (req, res) => {
     throw error;
   }
 
-  if (rentalRequest.status !== "return_pending") {
-    const error = new Error("Only return pending rental requests can be confirmed");
+  if (rentalRequest.status !== "active") {
+    const error = new Error("Only active rental requests can be completed");
     error.statusCode = 400;
     throw error;
   }
@@ -336,11 +387,11 @@ const confirmRentalReturn = asyncHandler(async (req, res) => {
 
   const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
     .populate("book", "title author category rentalPrice securityDeposit")
-    .populate("renter", "name email");
+    .populate("owner", "fullName name phoneNumber phone email");
 
   res.status(200).json({
-    message: "Return confirmed successfully",
-    rentalRequest: formatRentalRequestActionResponse(updatedRentalRequest)
+    message: "Rental completed successfully",
+    rentalRequest: formatRentalRequestRenterActionResponse(updatedRentalRequest)
   });
 });
 
@@ -397,7 +448,7 @@ const getOutgoingRentalRequests = asyncHandler(async (req, res) => {
   const [requests, totalRequests] = await Promise.all([
     RentalRequest.find(filters)
       .populate("book", "title author category rentalPrice securityDeposit")
-      .populate("owner", "name email")
+      .populate("owner", "fullName name phoneNumber phone email")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -455,7 +506,7 @@ const getRenterActiveRentalRequests = asyncHandler(async (req, res) => {
 
   const filters = {
     renter: req.user._id,
-    status: "approved"
+    status: { $in: renterActiveRentalStatuses }
   };
 
   if (req.query.status) {
@@ -465,7 +516,7 @@ const getRenterActiveRentalRequests = asyncHandler(async (req, res) => {
   const [requests, totalRequests] = await Promise.all([
     RentalRequest.find(filters)
       .populate("book", "title author category rentalPrice securityDeposit")
-      .populate("owner", "name email")
+      .populate("owner", "fullName name phoneNumber phone email")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -478,10 +529,27 @@ const getRenterActiveRentalRequests = asyncHandler(async (req, res) => {
   });
 });
 
+const getOwnRentalRequestForBook = asyncHandler(async (req, res) => {
+  validateRequest(req);
+
+  const rentalRequest = await RentalRequest.findOne({
+    book: req.params.bookId,
+    renter: req.user._id,
+    status: { $in: ["pending", "approved", "active", "rejected", "completed"] }
+  })
+    .populate("book", "title")
+    .populate("owner", "fullName name phoneNumber phone email")
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    rentalRequest: rentalRequest ? formatOwnBookRentalRequestResponse(rentalRequest) : null
+  });
+});
+
 const createRentalRequest = asyncHandler(async (req, res) => {
   validateRequest(req);
 
-  const book = await Book.findById(req.body.book).populate("owner", "name email");
+  const book = await Book.findById(req.body.book).populate("owner", "fullName name phoneNumber phone email");
 
   if (!book) {
     const error = new Error("Book not found");
@@ -504,7 +572,7 @@ const createRentalRequest = asyncHandler(async (req, res) => {
   const existingRequest = await RentalRequest.findOne({
     book: book._id,
     renter: req.user._id,
-    status: { $in: ["pending", "approved"] }
+    status: { $in: ["pending", "approved", "active"] }
   });
 
   if (existingRequest) {
@@ -523,7 +591,7 @@ const createRentalRequest = asyncHandler(async (req, res) => {
 
   const populatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
     .populate("book", "title author category rentalPrice securityDeposit")
-    .populate("owner", "name email")
+    .populate("owner", "fullName name phoneNumber phone email")
     .populate("renter", "name email");
 
   res.status(201).json({
@@ -536,10 +604,11 @@ module.exports = {
   createRentalRequest,
   getIncomingRentalRequests,
   getOutgoingRentalRequests,
+  getOwnRentalRequestForBook,
   getOwnerActiveRentalRequests,
   getRenterActiveRentalRequests,
   approveRentalRequest,
   rejectRentalRequest,
-  initiateRentalReturn,
-  confirmRentalReturn
+  startRentalRequest,
+  completeRentalRequest
 };

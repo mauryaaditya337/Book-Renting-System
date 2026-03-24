@@ -17,11 +17,29 @@ import {
 
 const PAGE_LIMIT = 20;
 
+function normalizeWhatsAppPhoneNumber(phoneNumber = "") {
+  return String(phoneNumber).replace(/[^\d]/g, "");
+}
+
+function buildWhatsAppUrl(phoneNumber, bookTitle) {
+  const normalizedPhoneNumber = normalizeWhatsAppPhoneNumber(phoneNumber);
+
+  if (!normalizedPhoneNumber) {
+    return "";
+  }
+
+  const message = encodeURIComponent(`Hi, my request was approved for: ${bookTitle}`);
+  return `https://wa.me/${normalizedPhoneNumber}?text=${message}`;
+}
+
 export function MyRequestsView() {
   const { token } = useAuth();
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [activeRequestId, setActiveRequestId] = useState("");
 
   useEffect(() => {
     let isActive = true;
@@ -65,6 +83,38 @@ export function MyRequestsView() {
     };
   }, [token]);
 
+  const handleRequestAction = async (requestId, action) => {
+    if (!token) {
+      return;
+    }
+
+    setActiveRequestId(requestId);
+    setActionMessage("");
+    setActionError("");
+
+    try {
+      const data = await apiRequest(`/rent-requests/${requestId}/${action}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      setRequests((current) =>
+        current.map((request) =>
+          request.id === requestId
+            ? { ...request, ...data.rentalRequest, book: { ...request.book, ...data.rentalRequest.book } }
+            : request
+        )
+      );
+      setActionMessage(data.message || "Request updated successfully.");
+    } catch (error) {
+      setActionError(error.message);
+    } finally {
+      setActiveRequestId("");
+    }
+  };
+
   return (
     <ProtectedPage>
       <section className="space-y-6">
@@ -92,6 +142,18 @@ export function MyRequestsView() {
           </div>
         </div>
 
+        {actionMessage ? (
+          <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {actionMessage}
+          </p>
+        ) : null}
+
+        {actionError ? (
+          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {actionError}
+          </p>
+        ) : null}
+
         {isLoading ? (
           <LoadingState />
         ) : errorMessage ? (
@@ -100,7 +162,15 @@ export function MyRequestsView() {
           <EmptyState />
         ) : (
           <div className="grid gap-4">
-            {requests.map((request) => (
+            {requests.map((request) => {
+              const ownerPhoneNumber = request.owner?.phoneNumber || "";
+              const whatsappUrl = buildWhatsAppUrl(ownerPhoneNumber, request.book?.title || "your book");
+              const canContactOnWhatsapp =
+                ["approved", "active"].includes(request.status) &&
+                normalizeWhatsAppPhoneNumber(ownerPhoneNumber).length >= 7;
+              const isSubmitting = activeRequestId === request.id;
+
+              return (
               <article
                 key={request.id}
                 className="rounded-[2rem] border border-white/60 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.1)]"
@@ -130,6 +200,12 @@ export function MyRequestsView() {
                         <InfoRow label="End date" value={formatRequestDate(request.endDate)} />
                         <InfoRow label="Requested on" value={formatRequestDateTime(request.createdAt)} />
                       </div>
+                      {request.status === "rejected" && request.rejectionReason ? (
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                          <p className="font-medium">Rejection reason</p>
+                          <p className="mt-1">{request.rejectionReason}</p>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
@@ -147,10 +223,56 @@ export function MyRequestsView() {
                     >
                       View book
                     </Link>
+                    {request.status === "pending" ? (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700">
+                        Pending Approval
+                      </div>
+                    ) : null}
+                    {request.status === "rejected" ? (
+                      <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700">
+                        Request Rejected
+                      </div>
+                    ) : null}
+                    {request.status === "approved" ? (
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => handleRequestAction(request.id, "start")}
+                        className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                      >
+                        {isSubmitting ? "Starting..." : "Start Rent"}
+                      </button>
+                    ) : null}
+                    {request.status === "active" ? (
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => handleRequestAction(request.id, "complete")}
+                        className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                      >
+                        {isSubmitting ? "Updating..." : "Return Book"}
+                      </button>
+                    ) : null}
+                    {request.status === "completed" ? (
+                      <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">
+                        Completed
+                      </div>
+                    ) : null}
+                    {canContactOnWhatsapp ? (
+                      <a
+                        href={whatsappUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-2xl bg-emerald-600 px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-emerald-700"
+                      >
+                        Contact on WhatsApp
+                      </a>
+                    ) : null}
                   </div>
                 </div>
               </article>
-            ))}
+            );
+            })}
           </div>
         )}
       </section>

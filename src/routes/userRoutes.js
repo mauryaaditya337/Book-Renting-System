@@ -12,16 +12,17 @@ const { protect } = require("../middleware/authMiddleware");
 const router = express.Router();
 
 const allowedProfileUpdateFields = [
-  "phone",
-  "addressLine1",
-  "addressLine2",
+  "fullName",
+  "collegeName",
+  "phoneNumber",
   "city",
   "state",
-  "pincode",
+  "address",
   "bio",
-  "avatarUrl"
+  "qualification",
+  "currentDegree"
 ];
-const allowedSignupFields = ["name", "email", "password"];
+const allowedSignupFields = ["fullName", "email", "password", "collegeName", "phoneNumber"];
 const allowedLoginFields = ["email", "password"];
 
 const signupValidation = [
@@ -39,12 +40,18 @@ const signupValidation = [
 
     return true;
   }),
-  body("name")
+  body("fullName")
     .trim()
     .notEmpty()
-    .withMessage("Name is required")
-    .isLength({ min: 2, max: 50 })
-    .withMessage("Name must be between 2 and 50 characters"),
+    .withMessage("Full name is required")
+    .isLength({ min: 2, max: 80 })
+    .withMessage("Full name must be between 2 and 80 characters"),
+  body("collegeName")
+    .trim()
+    .notEmpty()
+    .withMessage("College name is required")
+    .isLength({ min: 2, max: 120 })
+    .withMessage("College name must be between 2 and 120 characters"),
   body("email")
     .trim()
     .notEmpty()
@@ -56,7 +63,15 @@ const signupValidation = [
     .notEmpty()
     .withMessage("Password is required")
     .isLength({ min: 6 })
-    .withMessage("Password must be at least 6 characters long")
+    .withMessage("Password must be at least 6 characters long"),
+  body("phoneNumber")
+    .optional()
+    .isString()
+    .withMessage("Phone number must be a string")
+    .bail()
+    .trim()
+    .isLength({ min: 7, max: 20 })
+    .withMessage("Phone number must be between 7 and 20 characters")
 ];
 
 const loginValidation = [
@@ -112,30 +127,38 @@ const updateProfileValidation = [
 
     return true;
   }),
-  body("phone")
+  body("fullName")
     .optional()
     .isString()
-    .withMessage("Phone must be a string")
+    .withMessage("Full name must be a string")
     .bail()
     .trim()
-    .isLength({ min: 7, max: 20 })
-    .withMessage("Phone must be between 7 and 20 characters"),
-  body("addressLine1")
+    .isLength({ min: 2, max: 80 })
+    .withMessage("Full name must be between 2 and 80 characters"),
+  body("collegeName")
     .optional()
     .isString()
-    .withMessage("Address line 1 must be a string")
+    .withMessage("College name must be a string")
     .bail()
     .trim()
-    .isLength({ max: 120 })
-    .withMessage("Address line 1 must be less than 120 characters"),
-  body("addressLine2")
+    .isLength({ min: 2, max: 120 })
+    .withMessage("College name must be between 2 and 120 characters"),
+  body("phoneNumber")
     .optional()
     .isString()
-    .withMessage("Address line 2 must be a string")
+    .withMessage("Phone number must be a string")
     .bail()
     .trim()
-    .isLength({ max: 120 })
-    .withMessage("Address line 2 must be less than 120 characters"),
+    .custom((value) => value === "" || (value.length >= 7 && value.length <= 20))
+    .withMessage("Phone number must be empty or between 7 and 20 characters"),
+  body("address")
+    .optional()
+    .isString()
+    .withMessage("Address must be a string")
+    .bail()
+    .trim()
+    .isLength({ max: 240 })
+    .withMessage("Address must be less than 240 characters"),
   body("city")
     .optional()
     .isString()
@@ -152,14 +175,6 @@ const updateProfileValidation = [
     .trim()
     .isLength({ max: 60 })
     .withMessage("State must be less than 60 characters"),
-  body("pincode")
-    .optional()
-    .isString()
-    .withMessage("Pincode must be a string")
-    .bail()
-    .trim()
-    .isLength({ min: 3, max: 20 })
-    .withMessage("Pincode must be between 3 and 20 characters"),
   body("bio")
     .optional()
     .isString()
@@ -168,27 +183,22 @@ const updateProfileValidation = [
     .trim()
     .isLength({ max: 500 })
     .withMessage("Bio must be less than 500 characters"),
-  body("avatarUrl")
+  body("qualification")
     .optional()
     .isString()
-    .withMessage("Avatar URL must be a string")
+    .withMessage("Qualification must be a string")
     .bail()
     .trim()
-    .isLength({ max: 300 })
-    .withMessage("Avatar URL must be less than 300 characters")
+    .isLength({ max: 120 })
+    .withMessage("Qualification must be less than 120 characters"),
+  body("currentDegree")
+    .optional()
+    .isString()
+    .withMessage("Current degree must be a string")
     .bail()
-    .custom((value) => {
-      if (value === "") {
-        return true;
-      }
-
-      try {
-        new URL(value);
-        return true;
-      } catch (error) {
-        throw new Error("Avatar URL must be a valid URL");
-      }
-    })
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage("Current degree must be less than 120 characters")
 ];
 
 router.post("/signup", signupValidation, signupUser);

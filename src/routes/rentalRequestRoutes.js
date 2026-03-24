@@ -5,12 +5,13 @@ const {
   createRentalRequest,
   getIncomingRentalRequests,
   getOutgoingRentalRequests,
+  getOwnRentalRequestForBook,
   getOwnerActiveRentalRequests,
   getRenterActiveRentalRequests,
   approveRentalRequest,
   rejectRentalRequest,
-  initiateRentalReturn,
-  confirmRentalReturn
+  startRentalRequest,
+  completeRentalRequest
 } = require("../controllers/rentalRequestController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -18,9 +19,9 @@ const router = express.Router();
 
 const allowedRentalRequestFields = ["book", "startDate", "endDate"];
 const allowedRentalRequestQueryParams = ["status", "page", "limit"];
-const allowedRentalRequestStatuses = ["pending", "approved", "rejected", "cancelled", "return_pending", "completed"];
-const allowedOwnerActiveRentalStatuses = ["approved", "return_pending"];
-const allowedRenterActiveRentalStatuses = ["approved"];
+const allowedRentalRequestStatuses = ["pending", "approved", "active", "completed", "rejected"];
+const allowedOwnerActiveRentalStatuses = ["approved", "active"];
+const allowedRenterActiveRentalStatuses = ["active"];
 
 const normalizeDate = (value) => {
   const date = new Date(value);
@@ -100,7 +101,7 @@ const getIncomingRentalRequestsValidation = [
   query("status")
     .optional()
     .isIn(allowedRentalRequestStatuses)
-    .withMessage("Status must be one of: pending, approved, rejected, cancelled, return_pending, completed"),
+    .withMessage("Status must be one of: pending, approved, active, completed, rejected"),
   query("page")
     .optional()
     .isInt({ min: 1 })
@@ -117,6 +118,38 @@ const rentalRequestActionValidation = [
   param("id").isMongoId().withMessage("Rental request id must be a valid MongoDB ObjectId")
 ];
 
+const rejectRentalRequestValidation = [
+  ...rentalRequestActionValidation,
+  body().custom((value) => {
+    if (!value || Array.isArray(value) || typeof value !== "object") {
+      throw new Error("Request body must be a valid JSON object");
+    }
+
+    const keys = Object.keys(value);
+    const unknownFields = keys.filter((key) => key !== "rejectionReason");
+
+    if (unknownFields.length > 0) {
+      throw new Error(`Unknown field(s): ${unknownFields.join(", ")}`);
+    }
+
+    return true;
+  }),
+  body("rejectionReason")
+    .exists({ checkFalsy: true })
+    .withMessage("Rejection reason is required")
+    .bail()
+    .isString()
+    .withMessage("Rejection reason must be a string")
+    .bail()
+    .trim()
+    .notEmpty()
+    .withMessage("Rejection reason is required")
+];
+
+const rentalRequestBookValidation = [
+  param("bookId").isMongoId().withMessage("Book id must be a valid MongoDB ObjectId")
+];
+
 const getOwnerActiveRentalRequestsValidation = [
   query().custom((value, { req }) => {
     const queryKeys = Object.keys(req.query);
@@ -131,7 +164,7 @@ const getOwnerActiveRentalRequestsValidation = [
   query("status")
     .optional()
     .isIn(allowedOwnerActiveRentalStatuses)
-    .withMessage("Status must be one of: approved, return_pending"),
+    .withMessage("Status must be one of: approved, active"),
   query("page")
     .optional()
     .isInt({ min: 1 })
@@ -158,7 +191,7 @@ const getRenterActiveRentalRequestsValidation = [
   query("status")
     .optional()
     .isIn(allowedRenterActiveRentalStatuses)
-    .withMessage("Status must be: approved"),
+    .withMessage("Status must be: active"),
   query("page")
     .optional()
     .isInt({ min: 1 })
@@ -173,12 +206,13 @@ const getRenterActiveRentalRequestsValidation = [
 
 router.get("/incoming", protect, getIncomingRentalRequestsValidation, getIncomingRentalRequests);
 router.get("/outgoing", protect, getIncomingRentalRequestsValidation, getOutgoingRentalRequests);
+router.get("/book/:bookId", protect, rentalRequestBookValidation, getOwnRentalRequestForBook);
 router.get("/active/owner", protect, getOwnerActiveRentalRequestsValidation, getOwnerActiveRentalRequests);
 router.get("/active/renter", protect, getRenterActiveRentalRequestsValidation, getRenterActiveRentalRequests);
 router.put("/:id/approve", protect, rentalRequestActionValidation, approveRentalRequest);
-router.put("/:id/reject", protect, rentalRequestActionValidation, rejectRentalRequest);
-router.put("/:id/return-initiate", protect, rentalRequestActionValidation, initiateRentalReturn);
-router.put("/:id/return-confirm", protect, rentalRequestActionValidation, confirmRentalReturn);
+router.put("/:id/reject", protect, rejectRentalRequestValidation, rejectRentalRequest);
+router.post("/:id/start", protect, rentalRequestActionValidation, startRentalRequest);
+router.post("/:id/complete", protect, rentalRequestActionValidation, completeRentalRequest);
 router.post("/", protect, createRentalRequestValidation, createRentalRequest);
 
 module.exports = router;

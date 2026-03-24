@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { BookCard } from "@/components/BookCard";
@@ -114,15 +115,23 @@ export function BooksBrowse() {
         <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-3xl font-semibold text-slate-900 sm:text-4xl">
-              Find books available for rent
+              Find books from the community
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-              Search by title or author, narrow by category or location, and open any book
-              card to see the full listing details.
+              Search by title or author, narrow by category or location, and browse all
+              listings with available books shown first.
             </p>
           </div>
-          <div className="rounded-3xl bg-slate-900 px-4 py-3 text-sm text-slate-100">
-            {pagination.totalBooks} book{pagination.totalBooks === 1 ? "" : "s"} found
+          <div className="flex flex-col gap-3 sm:items-end">
+            <div className="rounded-3xl bg-slate-900 px-4 py-3 text-sm text-slate-100">
+              {pagination.totalBooks} book{pagination.totalBooks === 1 ? "" : "s"} found
+            </div>
+            <Link
+              href="/request-book"
+              className="rounded-2xl bg-teal-700 px-5 py-3 text-center text-sm font-medium text-white transition hover:bg-teal-800"
+            >
+              Can&apos;t find your book? Request it
+            </Link>
           </div>
         </div>
 
@@ -233,6 +242,14 @@ function EmptyState() {
       <p className="mt-3 text-sm leading-6 text-slate-600">
         Try a broader search, remove a filter, or check back after more listings are added.
       </p>
+      <div className="mt-5 flex flex-wrap justify-center gap-3">
+        <Link
+          href="/request-book"
+          className="inline-flex rounded-2xl bg-teal-700 px-5 py-3 font-medium text-white transition hover:bg-teal-800"
+        >
+          Can&apos;t find your book? Request it
+        </Link>
+      </div>
     </div>
   );
 }

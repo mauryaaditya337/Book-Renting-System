@@ -26,26 +26,27 @@ const VIEW_CONFIG = {
     eyebrow: "Active Rentals",
     title: "Books you are currently renting",
     description:
-      "Track your live rentals and start the return flow once you are ready to hand the book back.",
+      "Track your live rentals and return a book once you have completed the rental.",
     primaryLabel: "Owner",
     emptyTitle: "No active rentals yet",
-    emptyDescription: "When one of your requests is approved, your active rental will appear here.",
+    emptyDescription: "Once you start an approved rental, it will appear here for tracking.",
     ctaHref: "/books",
     ctaLabel: "Browse books",
     secondaryEmptyHref: "/my-requests",
     secondaryEmptyLabel: "View my requests",
-    actionLabel: "Initiate Return",
-    actionVerb: "return-initiate",
-    successFallback: "Return initiated successfully.",
+    actionLabel: "Return Book",
+    actionVerb: "complete",
+    actionMethod: "POST",
+    successFallback: "Rental completed successfully.",
     secondaryHref: "/my-requests",
     secondaryLabel: "View my requests"
   },
   owner: {
     apiPath: "/rent-requests/active/owner",
     eyebrow: "Owner Rentals",
-    title: "Books currently rented from you",
+    title: "Reserved and active rentals for your books",
     description:
-      "Monitor live rentals for your listings and confirm returns once a renter starts the return process.",
+      "Monitor approved reservations and active rentals for your listings in one place.",
     primaryLabel: "Renter",
     emptyTitle: "No owner-side active rentals yet",
     emptyDescription: "Once one of your books is rented out, it will show up here for tracking.",
@@ -53,9 +54,6 @@ const VIEW_CONFIG = {
     ctaLabel: "Go to my listings",
     secondaryEmptyHref: "/incoming-requests",
     secondaryEmptyLabel: "Review incoming requests",
-    actionLabel: "Confirm Return",
-    actionVerb: "return-confirm",
-    successFallback: "Return confirmed successfully.",
     secondaryHref: "/incoming-requests",
     secondaryLabel: "View incoming requests"
   }
@@ -133,7 +131,7 @@ export function ActiveRentalsView({ mode }) {
 
     try {
       const data = await apiRequest(`/rent-requests/${requestId}/${config.actionVerb}`, {
-        method: "PUT",
+        method: config.actionMethod || "POST",
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -203,10 +201,7 @@ export function ActiveRentalsView({ mode }) {
             <div className="grid gap-4">
               {requests.map((request) => {
                 const isSubmitting = activeRequestId === request.id;
-                const canAct =
-                  mode === "renter"
-                    ? request.status === "approved"
-                    : request.status === "return_pending";
+                const canAct = mode === "renter" && request.status === "active";
 
                 return (
                   <article
@@ -264,7 +259,7 @@ export function ActiveRentalsView({ mode }) {
                             View book
                           </Link>
 
-                          {canAct ? (
+                          {canAct && config.actionVerb ? (
                             <button
                               type="button"
                               disabled={isSubmitting}

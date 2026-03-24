@@ -8,7 +8,20 @@ const {
 } = require("../utils/bookImages");
 
 const allowedConditions = ["New", "Like New", "Good", "Fair", "Poor"];
-const allowedAvailabilityStatuses = ["available", "unavailable", "rented"];
+const allowedAvailabilityStatuses = ["available", "reserved", "rented", "sold"];
+const allowedListingTypes = ["rent", "sell", "both"];
+
+function normalizeAvailabilityStatus(status) {
+  if (status === "unavailable") {
+    return "reserved";
+  }
+
+  if (!status) {
+    return "available";
+  }
+
+  return status;
+}
 
 const bookSchema = new mongoose.Schema(
   {
@@ -46,17 +59,42 @@ const bookSchema = new mongoose.Schema(
     },
     rentalPrice: {
       type: Number,
-      required: [true, "Rental price is required"],
+      required() {
+        return (this.listingType || "rent") !== "sell";
+      },
       min: [0, "Rental price must be at least 0"]
     },
     securityDeposit: {
       type: Number,
-      required: [true, "Security deposit is required"],
+      required() {
+        return (this.listingType || "rent") !== "sell";
+      },
       min: [0, "Security deposit must be at least 0"]
+    },
+    listingType: {
+      type: String,
+      default: "rent",
+      trim: true,
+      enum: {
+        values: allowedListingTypes,
+        message: "Listing type must be one of: rent, sell, both"
+      }
+    },
+    salePrice: {
+      type: Number,
+      min: [0, "Sale price must be at least 0"]
     },
     location: {
       type: String,
       required: [true, "Location is required"],
+      trim: true
+    },
+    meetupLocation: {
+      type: String,
+      trim: true
+    },
+    depositNote: {
+      type: String,
       trim: true
     },
     availabilityStatus: {
@@ -66,7 +104,7 @@ const bookSchema = new mongoose.Schema(
       trim: true,
       enum: {
         values: allowedAvailabilityStatuses,
-        message: "Availability status must be one of: available, unavailable, rented"
+        message: "Availability status must be one of: available, reserved, rented, sold"
       }
     },
     images: {
@@ -101,6 +139,8 @@ const bookSchema = new mongoose.Schema(
 );
 
 bookSchema.pre("validate", function syncLegacyCoverImage(next) {
+  this.availabilityStatus = normalizeAvailabilityStatus(this.availabilityStatus);
+
   const normalizedImages = normalizeBookImages(this.images);
   const legacyCoverImage = typeof this.imageUrl === "string" ? this.imageUrl.trim() : "";
 

@@ -24,13 +24,34 @@ const initialFormData = {
   category: "",
   description: "",
   condition: "Good",
+  listingType: "rent",
   rentalPrice: "",
+  salePrice: "",
   securityDeposit: "",
   location: "",
+  meetupLocation: "",
+  depositNote: "",
   images: [""]
 };
 
 const conditionOptions = ["New", "Like New", "Good", "Fair", "Poor"];
+const listingTypeOptions = [
+  {
+    value: "rent",
+    label: "Rent",
+    description: "Show rental price and security deposit."
+  },
+  {
+    value: "sell",
+    label: "Sell",
+    description: "Show a sale price only."
+  },
+  {
+    value: "both",
+    label: "Both",
+    description: "Offer renting and selling in one listing."
+  }
+];
 
 function normalizeIsbnCharacters(value = "") {
   return String(value).replace(/[^0-9Xx]/g, "").toUpperCase();
@@ -146,6 +167,21 @@ export function AddBookForm() {
     const { name, value } = event.target;
     setFormData((current) => ({ ...current, [name]: value }));
     setFieldErrors((current) => ({ ...current, [name]: "" }));
+    setFormError("");
+  };
+
+  const handleListingTypeChange = (nextListingType) => {
+    setFormData((current) => ({
+      ...current,
+      listingType: nextListingType
+    }));
+    setFieldErrors((current) => ({
+      ...current,
+      listingType: "",
+      rentalPrice: "",
+      salePrice: "",
+      securityDeposit: ""
+    }));
     setFormError("");
   };
 
@@ -339,8 +375,15 @@ export function AddBookForm() {
         ...formData,
         isbn: formData.isbn.trim(),
         images: normalizedImages,
-        rentalPrice: Number(formData.rentalPrice),
-        securityDeposit: Number(formData.securityDeposit)
+        listingType: formData.listingType,
+        rentalPrice:
+          formData.listingType === "sell" ? 0 : Number(formData.rentalPrice || 0),
+        salePrice:
+          formData.listingType === "rent" ? undefined : Number(formData.salePrice || 0),
+        securityDeposit:
+          formData.listingType === "sell" ? 0 : Number(formData.securityDeposit || 0),
+        meetupLocation: formData.meetupLocation.trim(),
+        depositNote: formData.depositNote.trim()
       };
 
       const data = await apiRequest("/books", {
@@ -583,6 +626,11 @@ export function AddBookForm() {
               </div>
 
               <form className="mt-8 grid gap-5 sm:grid-cols-2" onSubmit={handleSubmit}>
+                <ListingTypeField
+                  value={formData.listingType}
+                  error={fieldErrors.listingType}
+                  onChange={handleListingTypeChange}
+                />
                 <InputField
                   label="Title"
                   name="title"
@@ -636,28 +684,62 @@ export function AddBookForm() {
                   required
                 />
                 <InputField
-                  label="Rental Price"
-                  name="rentalPrice"
-                  type="number"
-                  value={formData.rentalPrice}
+                  label="Meetup Instructions"
+                  name="meetupLocation"
+                  value={formData.meetupLocation}
                   onChange={handleChange}
-                  error={fieldErrors.rentalPrice}
-                  placeholder="55"
-                  required
-                  min="0"
-                  step="0.01"
+                  error={fieldErrors.meetupLocation}
+                  placeholder="e.g. Meet near library gate"
                 />
+                {formData.listingType !== "sell" ? (
+                  <InputField
+                    label={formData.listingType === "both" ? "Rental Price" : "Rental Price"}
+                    name="rentalPrice"
+                    type="number"
+                    value={formData.rentalPrice}
+                    onChange={handleChange}
+                    error={fieldErrors.rentalPrice}
+                    placeholder="55"
+                    required
+                    min="0"
+                    step="0.01"
+                  />
+                ) : null}
+                {formData.listingType !== "rent" ? (
+                  <InputField
+                    label="Sale Price"
+                    name="salePrice"
+                    type="number"
+                    value={formData.salePrice}
+                    onChange={handleChange}
+                    error={fieldErrors.salePrice}
+                    placeholder="250"
+                    required
+                    min="0"
+                    step="0.01"
+                  />
+                ) : null}
+                {formData.listingType !== "sell" ? (
+                  <InputField
+                    label="Security Deposit"
+                    name="securityDeposit"
+                    type="number"
+                    value={formData.securityDeposit}
+                    onChange={handleChange}
+                    error={fieldErrors.securityDeposit}
+                    placeholder="220"
+                    required
+                    min="0"
+                    step="0.01"
+                  />
+                ) : null}
                 <InputField
-                  label="Security Deposit"
-                  name="securityDeposit"
-                  type="number"
-                  value={formData.securityDeposit}
+                  label="Deposit Note (Optional)"
+                  name="depositNote"
+                  value={formData.depositNote}
                   onChange={handleChange}
-                  error={fieldErrors.securityDeposit}
-                  placeholder="220"
-                  required
-                  min="0"
-                  step="0.01"
+                  error={fieldErrors.depositNote}
+                  placeholder="e.g. Rs100 refundable deposit"
                 />
                 <ImageUrlsField
                   images={formData.images}
@@ -839,7 +921,7 @@ function InputField({
   );
 }
 
-function SelectField({ error, label, options, ...props }) {
+function SelectField({ error, label, options, renderOptionLabel = (option) => option, ...props }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
@@ -849,12 +931,68 @@ function SelectField({ error, label, options, ...props }) {
       >
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {renderOptionLabel(option)}
           </option>
         ))}
       </select>
       <FieldMessage message={error} />
     </label>
+  );
+}
+
+function ListingTypeField({ value, error, onChange }) {
+  return (
+    <div className="sm:col-span-2 rounded-[1.5rem] border border-teal-100 bg-teal-50/70 p-5">
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-teal-700">
+          Listing Type
+        </p>
+        <h2 className="text-xl font-semibold text-slate-900">How should people get this book?</h2>
+        <p className="text-sm leading-6 text-slate-600">
+          Pick one option and the pricing fields below will update automatically.
+        </p>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        {listingTypeOptions.map((option) => {
+          const isActive = value === option.value;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange(option.value)}
+              aria-pressed={isActive}
+              className={`rounded-[1.35rem] border px-4 py-4 text-left transition ${
+                isActive
+                  ? "border-teal-600 bg-white shadow-[0_14px_34px_rgba(13,148,136,0.14)]"
+                  : "border-white/80 bg-white/80 hover:border-teal-200 hover:bg-white"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-base font-semibold text-slate-900">{option.label}</p>
+                <span
+                  className={`h-4 w-4 rounded-full border ${
+                    isActive ? "border-teal-600 bg-teal-600" : "border-slate-300 bg-white"
+                  }`}
+                />
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{option.description}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-sm text-slate-600">
+        {value === "rent"
+          ? "Rent listings ask for rental price and security deposit."
+          : value === "sell"
+            ? "Sell listings ask only for the sale price."
+            : "Both listings ask for rental price, security deposit, and sale price."}
+      </div>
+
+      <FieldMessage message={error} />
+    </div>
   );
 }
 

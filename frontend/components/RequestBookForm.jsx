@@ -8,7 +8,7 @@ import { FieldMessage } from "@/components/FieldMessage";
 import { ProtectedPage } from "@/components/ProtectedPage";
 import { useAuth } from "@/components/AuthProvider";
 import { apiRequest } from "@/lib/api";
-import { formatPrice, getAvailabilityTone, toTitleCase } from "@/lib/books";
+import { formatPrice, getAvailabilityTone, getListingPriceSummary, getListingType, toTitleCase } from "@/lib/books";
 
 function getToday() {
   return new Date().toISOString().split("T")[0];
@@ -112,9 +112,9 @@ export function RequestBookForm({ bookId }) {
         })
       });
 
-      setSuccessMessage("Request submitted successfully. Redirecting to your requests...");
+      setSuccessMessage("Request submitted successfully. Redirecting to the book details...");
       window.setTimeout(() => {
-        router.push("/my-requests");
+        router.push(`/books/${bookId}`);
       }, 900);
     } catch (error) {
       if (Array.isArray(error.details) && error.details.length > 0) {
@@ -243,8 +243,11 @@ export function RequestBookForm({ bookId }) {
               <div className="mt-6 space-y-4 text-sm">
                 <SummaryRow label="Owner" value={book.owner?.name || "Unknown"} />
                 <SummaryRow label="Location" value={book.location} />
-                <SummaryRow label="Rental price" value={formatPrice(book.rentalPrice)} />
-                <SummaryRow label="Security deposit" value={formatPrice(book.securityDeposit)} />
+                <SummaryRow label="Listing" value={toTitleCase(getListingType(book))} />
+                <SummaryRow label="Pricing" value={getListingPriceSummary(book).inlineSummary} />
+                {getListingType(book) !== "sell" ? (
+                  <SummaryRow label="Security deposit" value={formatPrice(book.securityDeposit)} />
+                ) : null}
                 <div className="rounded-2xl bg-white/5 px-4 py-3">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Availability</p>
                   <span

@@ -8,7 +8,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { BookCover } from "@/components/BookCover";
 import { apiRequest } from "@/lib/api";
 import { getPrimaryBookImage } from "@/lib/bookImages";
-import { formatPrice, getAvailabilityTone, toTitleCase } from "@/lib/books";
+import { getAvailabilityTone, getListingPriceSummary, toTitleCase } from "@/lib/books";
 
 const PAGE_LIMIT = 50;
 
@@ -120,7 +120,7 @@ export function MyListingsView() {
 
           <p className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
             Listings now load from the protected `GET /api/books/mine` route, so this page shows
-            all of your books, including unavailable or rented ones.
+            all of your books, including reserved, rented, and sold ones.
           </p>
 
           {errorMessage ? (
@@ -142,11 +142,15 @@ export function MyListingsView() {
           <EmptyState />
         ) : (
           <div className="grid gap-4">
-            {books.map((book) => (
-              <article
-                key={book.id}
-                className="rounded-[2rem] border border-white/60 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.1)]"
-              >
+            {books.map((book) => {
+              const priceSummary = getListingPriceSummary(book);
+              const availabilityStatus = book.availabilityStatus || "available";
+
+              return (
+                <article
+                  key={book.id}
+                  className="rounded-[2rem] border border-white/60 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.1)]"
+                >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex gap-4">
                     <BookCover
@@ -163,14 +167,14 @@ export function MyListingsView() {
                       <h2 className="text-xl font-semibold text-slate-900">{book.title}</h2>
                       <p className="text-sm text-slate-600">by {book.author}</p>
                       <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
-                        <span>{formatPrice(book.rentalPrice)}</span>
+                        <span>{priceSummary.inlineSummary}</span>
                         <span className="text-slate-300">/</span>
                         <span
                           className={`rounded-full border px-3 py-1 text-xs font-medium ${getAvailabilityTone(
-                            book.availabilityStatus
+                            availabilityStatus
                           )}`}
                         >
-                          {toTitleCase(book.availabilityStatus)}
+                          {toTitleCase(availabilityStatus)}
                         </span>
                       </div>
                     </div>
@@ -200,8 +204,9 @@ export function MyListingsView() {
                     </button>
                   </div>
                 </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
       </section>

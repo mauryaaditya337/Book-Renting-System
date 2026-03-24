@@ -5,18 +5,20 @@ const generateToken = require("../utils/generateToken");
 const validateRequest = require("../utils/validateRequest");
 const asyncHandler = require("../middleware/asyncHandler");
 
-const formatUserProfile = (user) => ({
+const formatCurrentUser = (user) => ({
   id: user._id,
-  name: user.name,
+  fullName: user.fullName || user.name || "",
+  name: user.name || user.fullName || "",
   email: user.email,
-  phone: user.phone || "",
-  addressLine1: user.addressLine1 || "",
-  addressLine2: user.addressLine2 || "",
+  collegeName: user.collegeName || "",
+  phoneNumber: user.phoneNumber || user.phone || "",
+  phone: user.phone || user.phoneNumber || "",
   city: user.city || "",
   state: user.state || "",
-  pincode: user.pincode || "",
+  address: user.address || user.addressLine1 || "",
   bio: user.bio || "",
-  avatarUrl: user.avatarUrl || "",
+  qualification: user.qualification || "",
+  currentDegree: user.currentDegree || "",
   createdAt: user.createdAt,
   updatedAt: user.updatedAt
 });
@@ -24,7 +26,7 @@ const formatUserProfile = (user) => ({
 const signupUser = asyncHandler(async (req, res) => {
   validateRequest(req);
 
-  const { name, email, password } = req.body;
+  const { fullName, email, password, collegeName, phoneNumber = "" } = req.body;
 
   const existingUser = await User.findOne({ email: email.toLowerCase() });
 
@@ -37,18 +39,18 @@ const signupUser = asyncHandler(async (req, res) => {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const user = await User.create({
-    name,
+    fullName,
+    name: fullName,
+    collegeName,
     email: email.toLowerCase(),
-    password: hashedPassword
+    password: hashedPassword,
+    phoneNumber,
+    phone: phoneNumber
   });
 
   res.status(201).json({
     message: "User registered successfully",
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email
-    }
+    user: formatCurrentUser(user)
   });
 });
 
@@ -88,7 +90,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
 const getCurrentUserProfile = asyncHandler(async (req, res) => {
   res.status(200).json({
-    user: formatUserProfile(req.user)
+    user: formatCurrentUser(req.user)
   });
 });
 
@@ -96,18 +98,31 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
   validateRequest(req);
 
   const allowedFields = [
-    "phone",
-    "addressLine1",
-    "addressLine2",
+    "fullName",
+    "collegeName",
+    "phoneNumber",
     "city",
     "state",
-    "pincode",
+    "address",
     "bio",
-    "avatarUrl"
+    "qualification",
+    "currentDegree"
   ];
 
   for (const field of allowedFields) {
     if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+      if (field === "fullName") {
+        req.user.fullName = req.body.fullName;
+        req.user.name = req.body.fullName;
+        continue;
+      }
+
+      if (field === "phoneNumber") {
+        req.user.phoneNumber = req.body.phoneNumber;
+        req.user.phone = req.body.phoneNumber;
+        continue;
+      }
+
       req.user[field] = req.body[field];
     }
   }
@@ -116,7 +131,7 @@ const updateCurrentUserProfile = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     message: "Profile updated successfully",
-    user: formatUserProfile(updatedUser)
+    user: formatCurrentUser(updatedUser)
   });
 });
 
