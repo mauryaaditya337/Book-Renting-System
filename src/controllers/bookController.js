@@ -38,8 +38,7 @@ const formatBookResponse = (book) => ({
       city: book.owner.city || "",
       bio: book.owner.bio || "",
       phoneNumber: book.owner.phoneNumber || " ",
-      name: book.owner.name || book.owner.fullName || " ",
-      email: book.owner.email || ""
+      name: book.owner.name || book.owner.fullName || " "
     }
   : null,
   createdAt: book.createdAt,
@@ -81,7 +80,7 @@ const availabilityRankExpression = {
 const getBookById = asyncHandler(async (req, res) => {
   validateRequest(req);
 
-  const book = await Book.findById(req.params.id).populate("owner", "fullName collegeName currentDegree city bio name phoneNumber email");
+  const book = await Book.findById(req.params.id).populate("owner", "fullName collegeName currentDegree city bio name phoneNumber");
 
   if (!book) {
     const error = new Error("Book not found");
@@ -97,7 +96,7 @@ const getBookById = asyncHandler(async (req, res) => {
 const updateOwnBookListing = asyncHandler(async (req, res) => {
   validateRequest(req);
 
-  const book = await Book.findById(req.params.id).populate("owner", "fullName collegeName currentDegree city bio name phoneNumber email");
+  const book = await Book.findById(req.params.id).populate("owner", "fullName collegeName currentDegree city bio name phoneNumber");
 
   if (!book) {
     const error = new Error("Book not found");
@@ -161,7 +160,7 @@ const updateOwnBookListing = asyncHandler(async (req, res) => {
   }
 
   const updatedBook = await book.save();
-  await updatedBook.populate("owner", "fullName collegeName currentDegree city bio name phoneNumber email");
+  await updatedBook.populate("owner", "fullName collegeName currentDegree city bio name phoneNumber");
 
   res.status(200).json({
     message: "Book listing updated successfully",
@@ -172,7 +171,7 @@ const updateOwnBookListing = asyncHandler(async (req, res) => {
 const deleteOwnBookListing = asyncHandler(async (req, res) => {
   validateRequest(req);
 
-  const book = await Book.findById(req.params.id).populate("owner", "fullName collegeName currentDegree city bio name phoneNumber email");
+  const book = await Book.findById(req.params.id).populate("owner", "fullName collegeName currentDegree city bio name phoneNumber");
 
   if (!book) {
     const error = new Error("Book not found");
@@ -251,7 +250,7 @@ const getBooks = asyncHandler(async (req, res) => {
   if (bookIds.length > 0) {
     const books = await Book.find({ _id: { $in: bookIds } }).populate(
       "owner",
-      "fullName collegeName currentDegree city bio name phoneNumber email"
+      "fullName collegeName currentDegree city bio name phoneNumber"
     );
 
     for (const book of books) {
@@ -286,7 +285,7 @@ const getOwnBooks = asyncHandler(async (req, res) => {
 
   const [books, totalBooks] = await Promise.all([
     Book.find(filters)
-      .populate("owner", "fullName collegeName currentDegree city bio name phoneNumber email")
+      .populate("owner", "fullName collegeName currentDegree city bio name phoneNumber")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -327,7 +326,7 @@ const createBookListing = asyncHandler(async (req, res) => {
     owner: req.user._id
   });
 
-  const populatedBook = await Book.findById(book._id).populate("owner", "fullName collegeName currentDegree city bio name phoneNumber email");
+  const populatedBook = await Book.findById(book._id).populate("owner", "fullName collegeName currentDegree city bio name phoneNumber");
 
   res.status(201).json({
     message: "Book listing created successfully",

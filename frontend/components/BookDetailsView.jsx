@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
 import { BookCover } from "@/components/BookCover";
 import { apiRequest } from "@/lib/api";
+import { saveCurrentLocationForLoginRedirect } from "@/lib/authRedirect";
 import { getBookImages } from "@/lib/bookImages";
 import { formatPrice, getAvailabilityTone, getListingPriceSummary, getListingType, toTitleCase } from "@/lib/books";
 
@@ -32,6 +34,7 @@ function buildWhatsAppUrl(phoneNumber, bookTitle, listingType) {
 
 export function BookDetailsView({ id }) {
   const { isAuthenticated, token, user } = useAuth();
+  const router = useRouter();
   const [book, setBook] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -179,8 +182,10 @@ export function BookDetailsView({ id }) {
   const hasPendingRequest = requestStatus === "pending";
   const hasApprovedRequest = requestStatus === "approved";
   const hasActiveRequest = requestStatus === "active";
+  const hasReturnPendingRequest = requestStatus === "return_pending";
   const hasRejectedRequest = requestStatus === "rejected";
   const hasCompletedRequest = requestStatus === "completed";
+  const canRequestAgain = hasRejectedRequest || hasCompletedRequest;
 
   const handlePreviousImage = () => {
     setActiveImageIndex((current) => (current === 0 ? images.length - 1 : current - 1));
@@ -188,6 +193,11 @@ export function BookDetailsView({ id }) {
 
   const handleNextImage = () => {
     setActiveImageIndex((current) => (current === images.length - 1 ? 0 : current + 1));
+  };
+
+  const handleLoginRedirect = () => {
+    saveCurrentLocationForLoginRedirect();
+    router.push("/login");
   };
 
   return (
@@ -306,7 +316,6 @@ export function BookDetailsView({ id }) {
           </div>
           <div className="mt-6 space-y-4 text-sm leading-6 text-slate-300">
             <SummaryRow label="Owner name" value={ownerFullName} />
-            <SummaryRow label="Owner email" value={book.owner?.email || "Unknown"} />
             <SummaryRow label="Listing" value={toTitleCase(listingType)} />
             <SummaryRow label="Pricing" value={priceSummary.inlineSummary} />
             <SummaryRow label="Pickup location" value={book.location} />
@@ -315,7 +324,7 @@ export function BookDetailsView({ id }) {
             <SummaryRow label="Availability" value={toTitleCase(availabilityStatus)} />
           </div>
 
-          {(hasApprovedRequest || hasActiveRequest) && shouldShowWhatsappButton ? (
+          {(hasApprovedRequest || hasActiveRequest || hasReturnPendingRequest) && shouldShowWhatsappButton ? (
             <a
               href={whatsappUrl}
               target="_blank"
@@ -348,7 +357,7 @@ export function BookDetailsView({ id }) {
                     </div>
                   ) : null}
                   <p className="mt-4 text-sm leading-6 text-slate-400">
-                    This request was rejected, so direct contact is still disabled.
+                    This request was rejected. You can send a fresh request if this book is available again.
                   </p>
                 </>
               ) : hasApprovedRequest ? (
@@ -369,36 +378,106 @@ export function BookDetailsView({ id }) {
                     This rental is currently active. You can coordinate with the owner on WhatsApp and return it from My Requests when you are done.
                   </p>
                 </>
+              ) : hasReturnPendingRequest ? (
+                <>
+                  <div className="mt-8 rounded-2xl border border-indigo-400/30 bg-indigo-500/10 px-5 py-3 text-center font-medium text-indigo-200">
+                    Return Pending
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-400">
+                    You have asked to return this book. The owner still needs to confirm the return before the rental is marked completed.
+                  </p>
+                </>
               ) : hasCompletedRequest ? (
                 <>
                   <div className="mt-8 rounded-2xl border border-teal-400/30 bg-teal-500/10 px-5 py-3 text-center font-medium text-teal-200">
                     Rental Completed
                   </div>
                   <p className="mt-4 text-sm leading-6 text-slate-400">
-                    Your previous rental for this book has been completed. If the book is available again, you can send a new request.
+                    Your previous rental for this book has been completed. You can request it again whenever the book is available.
                   </p>
                 </>
-              ) : (
+              ) : null}
+
+              {canRequestAgain ? (
                 <>
-                  <Link
-                    href={
-                      isAuthenticated
-                        ? `/books/${book.id}/request`
-                        : `/login?redirect=${encodeURIComponent(`/books/${book.id}/request`)}`
-                    }
-                    aria-disabled={!isRequestAvailable || isLoadingOwnRequest}
-                    className={`mt-8 block w-full rounded-2xl px-5 py-3 text-center font-medium transition ${
-                      isRequestAvailable && !isLoadingOwnRequest
-                        ? "bg-teal-600 text-white hover:bg-teal-500"
-                        : "pointer-events-none bg-slate-700 text-slate-400"
-                    }`}
-                  >
-                    {isLoadingOwnRequest
-                      ? "Checking request status..."
-                      : isRequestAvailable
-                        ? "Request This Book"
-                        : "Currently Unavailable"}
-                  </Link>
+                  {isAuthenticated ? (
+                    <Link
+                      href={`/books/${book.id}/request`}
+                      aria-disabled={!isRequestAvailable || isLoadingOwnRequest}
+                      className={`mt-8 block w-full rounded-2xl px-5 py-3 text-center font-medium transition ${
+                        isRequestAvailable && !isLoadingOwnRequest
+                          ? "bg-teal-600 text-white hover:bg-teal-500"
+                          : "pointer-events-none bg-slate-700 text-slate-400"
+                      }`}
+                    >
+                      {isLoadingOwnRequest
+                        ? "Checking request status..."
+                        : isRequestAvailable
+                          ? "Request Again"
+                          : "Currently Unavailable"}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleLoginRedirect}
+                      disabled={!isRequestAvailable || isLoadingOwnRequest}
+                      className={`mt-8 block w-full rounded-2xl px-5 py-3 text-center font-medium transition ${
+                        isRequestAvailable && !isLoadingOwnRequest
+                          ? "bg-teal-600 text-white hover:bg-teal-500"
+                          : "cursor-not-allowed bg-slate-700 text-slate-400"
+                      }`}
+                    >
+                      {isLoadingOwnRequest
+                        ? "Checking request status..."
+                        : isRequestAvailable
+                          ? "Request Again"
+                          : "Currently Unavailable"}
+                    </button>
+                  )}
+                </>
+              ) : null}
+
+              {!hasPendingRequest &&
+              !hasRejectedRequest &&
+              !hasApprovedRequest &&
+              !hasActiveRequest &&
+              !hasReturnPendingRequest &&
+              !hasCompletedRequest ? (
+                <>
+                  {isAuthenticated ? (
+                    <Link
+                      href={`/books/${book.id}/request`}
+                      aria-disabled={!isRequestAvailable || isLoadingOwnRequest}
+                      className={`mt-8 block w-full rounded-2xl px-5 py-3 text-center font-medium transition ${
+                        isRequestAvailable && !isLoadingOwnRequest
+                          ? "bg-teal-600 text-white hover:bg-teal-500"
+                          : "pointer-events-none bg-slate-700 text-slate-400"
+                      }`}
+                    >
+                      {isLoadingOwnRequest
+                        ? "Checking request status..."
+                        : isRequestAvailable
+                          ? "Request This Book"
+                          : "Currently Unavailable"}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleLoginRedirect}
+                      disabled={!isRequestAvailable || isLoadingOwnRequest}
+                      className={`mt-8 block w-full rounded-2xl px-5 py-3 text-center font-medium transition ${
+                        isRequestAvailable && !isLoadingOwnRequest
+                          ? "bg-teal-600 text-white hover:bg-teal-500"
+                          : "cursor-not-allowed bg-slate-700 text-slate-400"
+                      }`}
+                    >
+                      {isLoadingOwnRequest
+                        ? "Checking request status..."
+                        : isRequestAvailable
+                          ? "Request This Book"
+                          : "Currently Unavailable"}
+                    </button>
+                  )}
 
                   <p className="mt-4 text-sm leading-6 text-slate-400">
                     {isAuthenticated
@@ -406,7 +485,7 @@ export function BookDetailsView({ id }) {
                       : "Log in first and you can continue directly into the request form."}
                   </p>
                 </>
-              )}
+              ) : null}
             </>
           ) : (
             <p className="mt-8 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm leading-6 text-slate-300">

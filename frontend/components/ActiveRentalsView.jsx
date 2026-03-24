@@ -35,9 +35,9 @@ const VIEW_CONFIG = {
     secondaryEmptyHref: "/my-requests",
     secondaryEmptyLabel: "View my requests",
     actionLabel: "Return Book",
-    actionVerb: "complete",
+    actionVerb: "return-initiate",
     actionMethod: "POST",
-    successFallback: "Rental completed successfully.",
+    successFallback: "Return initiated successfully.",
     secondaryHref: "/my-requests",
     secondaryLabel: "View my requests"
   },
@@ -54,6 +54,10 @@ const VIEW_CONFIG = {
     ctaLabel: "Go to my listings",
     secondaryEmptyHref: "/incoming-requests",
     secondaryEmptyLabel: "Review incoming requests",
+    actionLabel: "Confirm Return",
+    actionVerb: "confirm-return",
+    actionMethod: "POST",
+    successFallback: "Return confirmed successfully.",
     secondaryHref: "/incoming-requests",
     secondaryLabel: "View incoming requests"
   }
@@ -201,7 +205,10 @@ export function ActiveRentalsView({ mode }) {
             <div className="grid gap-4">
               {requests.map((request) => {
                 const isSubmitting = activeRequestId === request.id;
-                const canAct = mode === "renter" && request.status === "active";
+                const canAct =
+                  mode === "renter"
+                    ? request.status === "active"
+                    : request.status === "return_pending";
 
                 return (
                   <article

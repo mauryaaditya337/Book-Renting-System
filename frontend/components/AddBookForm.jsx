@@ -10,6 +10,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { apiRequest } from "@/lib/api";
 
 const MAX_IMAGE_FIELDS = 3;
+const ADD_BOOK_DRAFT_KEY = "addBookDraft";
 const FLOW_STAGES = {
   scan: "scan",
   isbn: "isbn",
@@ -132,6 +133,27 @@ function mergeAutofillCoverImage(images = [], coverImage = "") {
   return mergedImages.slice(0, MAX_IMAGE_FIELDS);
 }
 
+function isEmptyDraftState({ formData, flowStage, isbnLookupValue }) {
+  return (
+    flowStage === FLOW_STAGES.scan &&
+    !isbnLookupValue &&
+    formData.title === "" &&
+    formData.author === "" &&
+    formData.isbn === "" &&
+    formData.category === "" &&
+    formData.description === "" &&
+    formData.condition === initialFormData.condition &&
+    formData.listingType === initialFormData.listingType &&
+    formData.rentalPrice === "" &&
+    formData.salePrice === "" &&
+    formData.securityDeposit === "" &&
+    formData.location === "" &&
+    formData.meetupLocation === "" &&
+    formData.depositNote === "" &&
+    JSON.stringify(withAtLeastOneImageField(formData.images)) === JSON.stringify(initialFormData.images)
+  );
+}
+
 export function AddBookForm() {
   const router = useRouter();
   const { token } = useAuth();
@@ -150,6 +172,8 @@ export function AddBookForm() {
   const [scanError, setScanError] = useState("");
   const [scanSuccess, setScanSuccess] = useState("");
   const [lastScannedCode, setLastScannedCode] = useState("");
+  const [hasHydratedDraft, setHasHydratedDraft] = useState(false);
+  const [draftRestoredMessage, setDraftRestoredMessage] = useState("");
 
   const resetLookupMessages = () => {
     setLookupError("");
@@ -173,14 +197,17 @@ export function AddBookForm() {
   const handleListingTypeChange = (nextListingType) => {
     setFormData((current) => ({
       ...current,
-      listingType: nextListingType
+      listingType: nextListingType,
+      securityDeposit: nextListingType === "sell" ? "" : current.securityDeposit,
+      depositNote: nextListingType === "sell" ? "" : current.depositNote
     }));
     setFieldErrors((current) => ({
       ...current,
       listingType: "",
       rentalPrice: "",
       salePrice: "",
-      securityDeposit: ""
+      securityDeposit: "",
+      depositNote: ""
     }));
     setFormError("");
   };
@@ -258,6 +285,71 @@ export function AddBookForm() {
       setScanSuccess("");
     }
   }, [flowStage]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      setHasHydratedDraft(true);
+      return;
+    }
+
+    try {
+      const savedDraft = window.localStorage.getItem(ADD_BOOK_DRAFT_KEY);
+
+      if (savedDraft) {
+        const parsedDraft = JSON.parse(savedDraft);
+        const nextFormData = {
+          ...initialFormData,
+          ...(parsedDraft.formData || {}),
+          images: withAtLeastOneImageField(parsedDraft?.formData?.images || initialFormData.images)
+        };
+
+        setFormData(nextFormData);
+        setIsbnLookupValue(parsedDraft.isbnLookupValue || "");
+        setFormSource(
+          parsedDraft.formSource === FLOW_STAGES.scan ||
+          parsedDraft.formSource === FLOW_STAGES.isbn ||
+          parsedDraft.formSource === FLOW_STAGES.manual
+            ? parsedDraft.formSource
+            : FLOW_STAGES.manual
+        );
+        setFlowStage(
+          parsedDraft.flowStage === FLOW_STAGES.isbn ||
+          parsedDraft.flowStage === FLOW_STAGES.manual ||
+          parsedDraft.flowStage === FLOW_STAGES.form
+            ? parsedDraft.flowStage
+            : FLOW_STAGES.form
+        );
+        setDraftRestoredMessage("Draft restored from your previous visit.");
+      }
+    } catch (error) {
+      window.localStorage.removeItem(ADD_BOOK_DRAFT_KEY);
+    } finally {
+      setHasHydratedDraft(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedDraft || typeof window === "undefined") {
+      return;
+    }
+
+    const draftState = {
+      formData: {
+        ...formData,
+        images: withAtLeastOneImageField(formData.images)
+      },
+      flowStage,
+      formSource,
+      isbnLookupValue
+    };
+
+    if (isEmptyDraftState(draftState)) {
+      window.localStorage.removeItem(ADD_BOOK_DRAFT_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(ADD_BOOK_DRAFT_KEY, JSON.stringify(draftState));
+  }, [flowStage, formData, formSource, hasHydratedDraft, isbnLookupValue]);
 
   const lookupBookMetadata = async (rawIsbn, source) => {
     const rawValue = String(rawIsbn ?? "").trim();
@@ -383,7 +475,7 @@ export function AddBookForm() {
         securityDeposit:
           formData.listingType === "sell" ? 0 : Number(formData.securityDeposit || 0),
         meetupLocation: formData.meetupLocation.trim(),
-        depositNote: formData.depositNote.trim()
+        depositNote: formData.listingType === "sell" ? "" : formData.depositNote.trim()
       };
 
       const data = await apiRequest("/books", {
@@ -403,6 +495,11 @@ export function AddBookForm() {
       setScanSuccess("");
       setFlowStage(FLOW_STAGES.scan);
       setFormSource(FLOW_STAGES.manual);
+      setDraftRestoredMessage("");
+
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(ADD_BOOK_DRAFT_KEY);
+      }
 
       window.setTimeout(() => {
         router.push("/my-listings");
@@ -446,6 +543,12 @@ export function AddBookForm() {
             Begin with barcode scanning by default, then fall back to ISBN lookup or full manual
             entry when needed. Every path leads into the same editable book form.
           </p>
+
+          {draftRestoredMessage ? (
+            <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {draftRestoredMessage}
+            </p>
+          ) : null}
 
           <FlowStageHeader currentStage={flowStage} formSource={formSource} />
 
@@ -733,14 +836,16 @@ export function AddBookForm() {
                     step="0.01"
                   />
                 ) : null}
-                <InputField
-                  label="Deposit Note (Optional)"
-                  name="depositNote"
-                  value={formData.depositNote}
-                  onChange={handleChange}
-                  error={fieldErrors.depositNote}
-                  placeholder="e.g. Rs100 refundable deposit"
-                />
+                {formData.listingType !== "sell" ? (
+                  <InputField
+                    label="Deposit Note (Optional)"
+                    name="depositNote"
+                    value={formData.depositNote}
+                    onChange={handleChange}
+                    error={fieldErrors.depositNote}
+                    placeholder="e.g. Rs100 refundable deposit"
+                  />
+                ) : null}
                 <ImageUrlsField
                   images={formData.images}
                   error={fieldErrors.images}

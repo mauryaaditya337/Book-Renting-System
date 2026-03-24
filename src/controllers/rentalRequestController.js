@@ -26,13 +26,11 @@ const formatRentalRequestResponse = (rentalRequest) => ({
     id: rentalRequest.owner._id,
     name: rentalRequest.owner.name,
     fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
-    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || "",
-    email: rentalRequest.owner.email
+    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || ""
   },
   renter: {
     id: rentalRequest.renter._id,
-    name: rentalRequest.renter.name,
-    email: rentalRequest.renter.email
+    name: rentalRequest.renter.name
   },
   createdAt: rentalRequest.createdAt,
   updatedAt: rentalRequest.updatedAt
@@ -54,8 +52,7 @@ const formatRentalRequestActionResponse = (rentalRequest) => ({
   },
   renter: {
     id: rentalRequest.renter._id,
-    name: rentalRequest.renter.name,
-    email: rentalRequest.renter.email
+    name: rentalRequest.renter.name
   },
   createdAt: rentalRequest.createdAt,
   updatedAt: rentalRequest.updatedAt
@@ -79,8 +76,7 @@ const formatRentalRequestRenterActionResponse = (rentalRequest) => ({
     id: rentalRequest.owner._id,
     name: rentalRequest.owner.name,
     fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
-    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || "",
-    email: rentalRequest.owner.email
+    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || ""
   },
   createdAt: rentalRequest.createdAt,
   updatedAt: rentalRequest.updatedAt
@@ -103,8 +99,7 @@ const formatOwnerActiveRentalResponse = (rentalRequest) => ({
   },
   renter: {
     id: rentalRequest.renter._id,
-    name: rentalRequest.renter.name,
-    email: rentalRequest.renter.email
+    name: rentalRequest.renter.name
   }
 });
 
@@ -127,8 +122,7 @@ const formatRenterActiveRentalResponse = (rentalRequest) => ({
     id: rentalRequest.owner._id,
     name: rentalRequest.owner.name,
     fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
-    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || "",
-    email: rentalRequest.owner.email
+    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || ""
   }
 });
 
@@ -149,8 +143,7 @@ const formatIncomingRentalRequestListItem = (rentalRequest) => ({
   },
   renter: {
     id: rentalRequest.renter._id,
-    name: rentalRequest.renter.name,
-    email: rentalRequest.renter.email
+    name: rentalRequest.renter.name
   }
 });
 
@@ -173,8 +166,7 @@ const formatOutgoingRentalRequestListItem = (rentalRequest) => ({
     id: rentalRequest.owner._id,
     name: rentalRequest.owner.name,
     fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
-    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || "",
-    email: rentalRequest.owner.email
+    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || ""
   }
 });
 
@@ -194,8 +186,7 @@ const formatOwnBookRentalRequestResponse = (rentalRequest) => ({
     id: rentalRequest.owner._id,
     name: rentalRequest.owner.name,
     fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
-    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || "",
-    email: rentalRequest.owner.email
+    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || ""
   }
 });
 
@@ -205,13 +196,13 @@ const buildRentalRequestListMeta = (page, limit, totalRequests) => ({
   totalPages: Math.max(1, Math.ceil(totalRequests / limit))
 });
 
-const ownerActiveRentalStatuses = ["approved", "active"];
-const renterActiveRentalStatuses = ["active"];
+const ownerActiveRentalStatuses = ["approved", "active", "return_pending"];
+const renterActiveRentalStatuses = ["active", "return_pending"];
 
 const getRentalRequestForOwnerAction = async (requestId, userId) => {
   const rentalRequest = await RentalRequest.findById(requestId)
     .populate("book", "title author category rentalPrice securityDeposit owner")
-    .populate("renter", "name email");
+    .populate("renter", "name");
 
   if (!rentalRequest) {
     const error = new Error("Rental request not found");
@@ -231,7 +222,7 @@ const getRentalRequestForOwnerAction = async (requestId, userId) => {
 const getRentalRequestForRenterAction = async (requestId, userId) => {
   const rentalRequest = await RentalRequest.findById(requestId)
     .populate("book", "title author category rentalPrice securityDeposit")
-    .populate("owner", "fullName name phoneNumber phone email");
+    .populate("owner", "fullName name phoneNumber phone");
 
   if (!rentalRequest) {
     const error = new Error("Rental request not found");
@@ -280,7 +271,7 @@ const approveRentalRequest = asyncHandler(async (req, res) => {
 
   const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
     .populate("book", "title author category rentalPrice securityDeposit")
-    .populate("renter", "name email");
+    .populate("renter", "name");
 
   res.status(200).json({
     message: "Rental request approved successfully",
@@ -313,7 +304,7 @@ const rejectRentalRequest = asyncHandler(async (req, res) => {
 
   const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
     .populate("book", "title author category rentalPrice securityDeposit")
-    .populate("renter", "name email");
+    .populate("renter", "name");
 
   res.status(200).json({
     message: "Rental request rejected successfully",
@@ -353,7 +344,7 @@ const startRentalRequest = asyncHandler(async (req, res) => {
 
   const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
     .populate("book", "title author category rentalPrice securityDeposit")
-    .populate("owner", "fullName name phoneNumber phone email");
+    .populate("owner", "fullName name phoneNumber phone");
 
   res.status(200).json({
     message: "Rental started successfully",
@@ -361,10 +352,40 @@ const startRentalRequest = asyncHandler(async (req, res) => {
   });
 });
 
-const completeRentalRequest = asyncHandler(async (req, res) => {
+const initiateRentalReturn = asyncHandler(async (req, res) => {
   validateRequest(req);
 
   const rentalRequest = await getRentalRequestForRenterAction(req.params.id, req.user._id);
+
+  if (rentalRequest.status === "return_pending") {
+    const error = new Error("Return has already been initiated for this rental request");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (rentalRequest.status !== "active") {
+    const error = new Error("Only active rental requests can be returned");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  rentalRequest.status = "return_pending";
+  await rentalRequest.save();
+
+  const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
+    .populate("book", "title author category rentalPrice securityDeposit")
+    .populate("owner", "fullName name phoneNumber phone");
+
+  res.status(200).json({
+    message: "Return initiated successfully",
+    rentalRequest: formatRentalRequestRenterActionResponse(updatedRentalRequest)
+  });
+});
+
+const confirmRentalReturn = asyncHandler(async (req, res) => {
+  validateRequest(req);
+
+  const rentalRequest = await getRentalRequestForOwnerAction(req.params.id, req.user._id);
 
   if (rentalRequest.status === "completed") {
     const error = new Error("This rental request has already been completed");
@@ -372,8 +393,8 @@ const completeRentalRequest = asyncHandler(async (req, res) => {
     throw error;
   }
 
-  if (rentalRequest.status !== "active") {
-    const error = new Error("Only active rental requests can be completed");
+  if (rentalRequest.status !== "return_pending") {
+    const error = new Error("Only return pending rental requests can be confirmed");
     error.statusCode = 400;
     throw error;
   }
@@ -387,11 +408,11 @@ const completeRentalRequest = asyncHandler(async (req, res) => {
 
   const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
     .populate("book", "title author category rentalPrice securityDeposit")
-    .populate("owner", "fullName name phoneNumber phone email");
+    .populate("renter", "name");
 
   res.status(200).json({
-    message: "Rental completed successfully",
-    rentalRequest: formatRentalRequestRenterActionResponse(updatedRentalRequest)
+    message: "Return confirmed successfully",
+    rentalRequest: formatRentalRequestActionResponse(updatedRentalRequest)
   });
 });
 
@@ -413,7 +434,7 @@ const getIncomingRentalRequests = asyncHandler(async (req, res) => {
   const [requests, totalRequests] = await Promise.all([
     RentalRequest.find(filters)
       .populate("book", "title author category rentalPrice securityDeposit")
-      .populate("renter", "name email")
+      .populate("renter", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -448,7 +469,7 @@ const getOutgoingRentalRequests = asyncHandler(async (req, res) => {
   const [requests, totalRequests] = await Promise.all([
     RentalRequest.find(filters)
       .populate("book", "title author category rentalPrice securityDeposit")
-      .populate("owner", "fullName name phoneNumber phone email")
+      .populate("owner", "fullName name phoneNumber phone")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -484,7 +505,7 @@ const getOwnerActiveRentalRequests = asyncHandler(async (req, res) => {
   const [requests, totalRequests] = await Promise.all([
     RentalRequest.find(filters)
       .populate("book", "title author category rentalPrice securityDeposit")
-      .populate("renter", "name email")
+      .populate("renter", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -516,7 +537,7 @@ const getRenterActiveRentalRequests = asyncHandler(async (req, res) => {
   const [requests, totalRequests] = await Promise.all([
     RentalRequest.find(filters)
       .populate("book", "title author category rentalPrice securityDeposit")
-      .populate("owner", "fullName name phoneNumber phone email")
+      .populate("owner", "fullName name phoneNumber phone")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
@@ -535,10 +556,10 @@ const getOwnRentalRequestForBook = asyncHandler(async (req, res) => {
   const rentalRequest = await RentalRequest.findOne({
     book: req.params.bookId,
     renter: req.user._id,
-    status: { $in: ["pending", "approved", "active", "rejected", "completed"] }
+    status: { $in: ["pending", "approved", "active", "return_pending", "rejected", "completed"] }
   })
     .populate("book", "title")
-    .populate("owner", "fullName name phoneNumber phone email")
+    .populate("owner", "fullName name phoneNumber phone")
     .sort({ createdAt: -1 });
 
   res.status(200).json({
@@ -549,7 +570,7 @@ const getOwnRentalRequestForBook = asyncHandler(async (req, res) => {
 const createRentalRequest = asyncHandler(async (req, res) => {
   validateRequest(req);
 
-  const book = await Book.findById(req.body.book).populate("owner", "fullName name phoneNumber phone email");
+  const book = await Book.findById(req.body.book).populate("owner", "fullName name phoneNumber phone");
 
   if (!book) {
     const error = new Error("Book not found");
@@ -572,7 +593,7 @@ const createRentalRequest = asyncHandler(async (req, res) => {
   const existingRequest = await RentalRequest.findOne({
     book: book._id,
     renter: req.user._id,
-    status: { $in: ["pending", "approved", "active"] }
+    status: { $in: ["pending", "approved", "active", "return_pending"] }
   });
 
   if (existingRequest) {
@@ -591,8 +612,8 @@ const createRentalRequest = asyncHandler(async (req, res) => {
 
   const populatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
     .populate("book", "title author category rentalPrice securityDeposit")
-    .populate("owner", "fullName name phoneNumber phone email")
-    .populate("renter", "name email");
+    .populate("owner", "fullName name phoneNumber phone")
+    .populate("renter", "name");
 
   res.status(201).json({
     message: "Rental request created successfully",
@@ -610,5 +631,6 @@ module.exports = {
   approveRentalRequest,
   rejectRentalRequest,
   startRentalRequest,
-  completeRentalRequest
+  initiateRentalReturn,
+  confirmRentalReturn
 };

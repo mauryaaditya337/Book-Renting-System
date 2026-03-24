@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { AuthCard } from "@/components/AuthCard";
 import { useAuth } from "@/components/AuthProvider";
+import { consumeRedirectAfterLogin, getDefaultPostLoginPath } from "@/lib/authRedirect";
 
 const initialSignupData = {
   fullName: "",
@@ -28,8 +29,6 @@ export function AuthForm({ mode }) {
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const redirectPath = searchParams.get("redirect") || "/profile";
-
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((current) => ({ ...current, [name]: value }));
@@ -50,6 +49,13 @@ export function AuthForm({ mode }) {
       } else {
         await login(formData.email, formData.password);
         setSuccessMessage("Login successful.");
+        const legacyRedirect = searchParams.get("redirect");
+        const storedRedirect = consumeRedirectAfterLogin();
+        const redirectPath =
+          legacyRedirect && legacyRedirect !== "/login"
+            ? legacyRedirect
+            : storedRedirect || getDefaultPostLoginPath();
+
         router.push(redirectPath);
       }
     } catch (error) {
@@ -78,23 +84,23 @@ export function AuthForm({ mode }) {
               name="fullName"
               value={formData.fullName}
               onChange={handleChange}
-              placeholder="Asha Reader"
+              placeholder="Your Name"
             />
             <InputField
               label="College name"
               name="collegeName"
               value={formData.collegeName}
               onChange={handleChange}
-              placeholder="Savitribai Phule Pune University"
+              placeholder="Your School/College Name"
             />
             <InputField
               label="Phone number"
               name="phoneNumber"
               value={formData.phoneNumber}
               onChange={handleChange}
-              placeholder="9876543210"
+              placeholder="978654XXXX"
               required={false}
-            />
+            /> 
           </>
         ) : null}
 

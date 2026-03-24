@@ -28,6 +28,10 @@ export function getRequestStatusTone(status) {
     return "bg-sky-50 text-sky-700 border-sky-200";
   }
 
+  if (status === "return_pending") {
+    return "bg-indigo-50 text-indigo-700 border-indigo-200";
+  }
+
   if (status === "pending") {
     return "bg-amber-50 text-amber-700 border-amber-200";
   }

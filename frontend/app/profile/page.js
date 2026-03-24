@@ -154,18 +154,20 @@ export default function ProfilePage() {
               <div className="rounded-3xl bg-slate-900 px-4 py-3 text-sm text-slate-100">
                 {isLoading ? "Refreshing profile..." : "Authenticated"}
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditing((current) => !current);
-                  setFieldErrors({});
-                  setFormError("");
-                  setSuccessMessage("");
-                }}
-                className="rounded-3xl bg-teal-700 px-4 py-3 text-sm font-medium text-white transition hover:bg-teal-800"
-              >
-                {isEditing ? "Close Edit" : "Edit Profile"}
-              </button>
+              {!isEditing ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(true);
+                    setFieldErrors({});
+                    setFormError("");
+                    setSuccessMessage("");
+                  }}
+                  className="rounded-3xl bg-teal-700 px-4 py-3 text-sm font-medium text-white transition hover:bg-teal-800"
+                >
+                  Edit Profile
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -175,91 +177,119 @@ export default function ProfilePage() {
             </p>
           ) : null}
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <ProfileField label="Full name" value={user?.fullName || user?.name || "Not added"} />
+          <form className="mt-8 grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
+            <ProfileField
+              label="Full name"
+              value={user?.fullName || user?.name || "Not added"}
+              isEditing={isEditing}
+              inputProps={{
+                name: "fullName",
+                value: formData.fullName,
+                onChange: handleChange,
+                required: true
+              }}
+              error={fieldErrors.fullName}
+            />
             <ProfileField label="Email" value={user?.email} />
-            <ProfileField label="College name" value={user?.collegeName || "Not added"} />
-            <ProfileField label="Phone number" value={user?.phoneNumber || user?.phone || "Not added"} />
-            <ProfileField label="Current degree" value={user?.currentDegree || "Not added"} />
-            <ProfileField label="Qualification" value={user?.qualification || "Not added"} />
-            <ProfileField label="City" value={user?.city || "Not added"} />
-            <ProfileField label="State" value={user?.state || "Not added"} />
-            <ProfileField label="Address" value={user?.address || "Not added"} />
-            <ProfileField label="Bio" value={user?.bio || "Not added"} />
+            <ProfileField
+              label="College name"
+              value={user?.collegeName || "Not added"}
+              isEditing={isEditing}
+              inputProps={{
+                name: "collegeName",
+                value: formData.collegeName,
+                onChange: handleChange,
+                required: true
+              }}
+              error={fieldErrors.collegeName}
+            />
+            <ProfileField
+              label="Phone number"
+              value={user?.phoneNumber || user?.phone || "Not added"}
+              isEditing={isEditing}
+              inputProps={{
+                name: "phoneNumber",
+                value: formData.phoneNumber,
+                onChange: handleChange
+              }}
+              error={fieldErrors.phoneNumber}
+            />
+            <ProfileField
+              label="Current degree"
+              value={user?.currentDegree || "Not added"}
+              isEditing={isEditing}
+              inputProps={{
+                name: "currentDegree",
+                value: formData.currentDegree,
+                onChange: handleChange
+              }}
+              error={fieldErrors.currentDegree}
+            />
+            <ProfileField
+              label="Qualification"
+              value={user?.qualification || "Not added"}
+              isEditing={isEditing}
+              inputProps={{
+                name: "qualification",
+                value: formData.qualification,
+                onChange: handleChange
+              }}
+              error={fieldErrors.qualification}
+            />
+            <ProfileField
+              label="City"
+              value={user?.city || "Not added"}
+              isEditing={isEditing}
+              inputProps={{
+                name: "city",
+                value: formData.city,
+                onChange: handleChange
+              }}
+              error={fieldErrors.city}
+            />
+            <ProfileField
+              label="State"
+              value={user?.state || "Not added"}
+              isEditing={isEditing}
+              inputProps={{
+                name: "state",
+                value: formData.state,
+                onChange: handleChange
+              }}
+              error={fieldErrors.state}
+            />
+            <ProfileField
+              label="Address"
+              value={user?.address || "Not added"}
+              isEditing={isEditing}
+              isTextArea
+              className="sm:col-span-2"
+              inputProps={{
+                name: "address",
+                value: formData.address,
+                onChange: handleChange,
+                rows: 3
+              }}
+              error={fieldErrors.address}
+            />
+            <ProfileField
+              label="Bio"
+              value={user?.bio || "Not added"}
+              isEditing={isEditing}
+              isTextArea
+              className="sm:col-span-2"
+              inputProps={{
+                name: "bio",
+                value: formData.bio,
+                onChange: handleChange,
+                rows: 4
+              }}
+              error={fieldErrors.bio}
+            />
             <ProfileField label="Joined" value={formatDate(user?.createdAt)} />
-          </div>
 
-          {isEditing ? (
-            <form className="mt-8 grid gap-5 sm:grid-cols-2" onSubmit={handleSubmit}>
-              <InputField
-                label="Full Name"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                error={fieldErrors.fullName}
-                required
-              />
-              <InputField
-                label="College Name"
-                name="collegeName"
-                value={formData.collegeName}
-                onChange={handleChange}
-                error={fieldErrors.collegeName}
-                required
-              />
-              <InputField
-                label="Phone Number"
-                name="phoneNumber"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-                error={fieldErrors.phoneNumber}
-              />
-              <InputField
-                label="Current Degree"
-                name="currentDegree"
-                value={formData.currentDegree}
-                onChange={handleChange}
-                error={fieldErrors.currentDegree}
-              />
-              <InputField
-                label="Qualification"
-                name="qualification"
-                value={formData.qualification}
-                onChange={handleChange}
-                error={fieldErrors.qualification}
-              />
-              <InputField
-                label="City"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                error={fieldErrors.city}
-              />
-              <InputField
-                label="State"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                error={fieldErrors.state}
-              />
-              <TextAreaField
-                label="Address"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                error={fieldErrors.address}
-                rows={3}
-              />
-              <TextAreaField
-                label="Bio"
-                name="bio"
-                value={formData.bio}
-                onChange={handleChange}
-                error={fieldErrors.bio}
-                rows={4}
-              />
-
-              <div className="sm:col-span-2 space-y-4">
+            {isEditing ? (
+              <div className="space-y-4 sm:col-span-2">
                 {formError ? (
                   <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     {formError}
@@ -272,7 +302,7 @@ export default function ProfilePage() {
                     disabled={isSaving}
                     className="rounded-2xl bg-teal-700 px-5 py-3 font-medium text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                   >
-                    {isSaving ? "Saving..." : "Save Profile"}
+                    {isSaving ? "Saving..." : "Save"}
                   </button>
                   <button
                     type="button"
@@ -283,46 +313,44 @@ export default function ProfilePage() {
                   </button>
                 </div>
               </div>
-            </form>
-          ) : null}
+            ) : null}
+          </form>
         </div>
       </section>
     </ProtectedPage>
   );
 }
 
-function ProfileField({ label, value }) {
+function ProfileField({
+  className = "",
+  error,
+  inputProps,
+  isEditing = false,
+  isTextArea = false,
+  label,
+  value
+}) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+    <div className={`rounded-3xl border border-slate-200 bg-slate-50 p-4 ${className}`.trim()}>
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+      {isEditing && inputProps ? (
+        <>
+          {isTextArea ? (
+            <textarea
+              {...inputProps}
+              className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
+            />
+          ) : (
+            <input
+              {...inputProps}
+              className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
+            />
+          )}
+          {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        </>
+      ) : (
+        <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+      )}
     </div>
-  );
-}
-
-function InputField({ error, label, ...props }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
-      <input
-        {...props}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
-      />
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-    </label>
-  );
-}
-
-function TextAreaField({ error, label, rows = 4, ...props }) {
-  return (
-    <label className="block sm:col-span-2">
-      <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
-      <textarea
-        {...props}
-        rows={rows}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
-      />
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-    </label>
   );
 }

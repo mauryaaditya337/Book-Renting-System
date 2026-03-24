@@ -247,11 +247,16 @@ export function MyRequestsView() {
                       <button
                         type="button"
                         disabled={isSubmitting}
-                        onClick={() => handleRequestAction(request.id, "complete")}
+                        onClick={() => handleRequestAction(request.id, "return-initiate")}
                         className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                       >
                         {isSubmitting ? "Updating..." : "Return Book"}
                       </button>
+                    ) : null}
+                    {request.status === "return_pending" ? (
+                      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700">
+                        Waiting for owner confirmation
+                      </div>
                     ) : null}
                     {request.status === "completed" ? (
                       <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">

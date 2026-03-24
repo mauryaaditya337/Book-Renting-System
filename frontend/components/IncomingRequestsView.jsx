@@ -25,6 +25,7 @@ const STATUS_FILTERS = [
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
   { value: "active", label: "Active" },
+  { value: "return_pending", label: "Return Pending" },
   { value: "rejected", label: "Rejected" },
   { value: "completed", label: "Completed" }
 ];
@@ -102,7 +103,7 @@ export function IncomingRequestsView() {
     setActionError("");
   };
 
-  const handleAction = async (requestId, action, payload = undefined) => {
+  const handleAction = async (requestId, action, payload = undefined, method = "PUT") => {
     if (!token) {
       return;
     }
@@ -113,7 +114,7 @@ export function IncomingRequestsView() {
 
     try {
       const data = await apiRequest(`/rent-requests/${requestId}/${action}`, {
-        method: "PUT",
+        method,
         headers: {
           Authorization: `Bearer ${token}`
         },
@@ -229,6 +230,7 @@ export function IncomingRequestsView() {
             <div className="grid gap-4">
               {requests.map((request) => {
                 const isPending = request.status === "pending";
+                const isReturnPending = request.status === "return_pending";
                 const isSubmitting = activeRequestId === request.id;
                 const isRejectingThisRequest = rejectingRequestId === request.id;
 
@@ -260,10 +262,7 @@ export function IncomingRequestsView() {
                         </div>
 
                         <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
-                          <InfoRow
-                            label="Reader email"
-                            value={request.renter?.email || "Not available"}
-                          />
+                          <InfoRow label="Reader" value={request.renter?.name || "Unknown reader"} />
                           <InfoRow label="Start date" value={formatRequestDate(request.startDate)} />
                           <InfoRow label="End date" value={formatRequestDate(request.endDate)} />
                           <InfoRow
@@ -310,6 +309,16 @@ export function IncomingRequestsView() {
                                 {isSubmitting ? "Updating..." : "Reject"}
                               </button>
                             </>
+                          ) : null}
+                          {isReturnPending ? (
+                            <button
+                              type="button"
+                              disabled={isSubmitting}
+                              onClick={() => handleAction(request.id, "confirm-return", undefined, "POST")}
+                              className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                            >
+                              {isSubmitting ? "Updating..." : "Confirm Return"}
+                            </button>
                           ) : null}
                         </div>
                       </div>

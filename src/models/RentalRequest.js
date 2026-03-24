@@ -27,7 +27,7 @@ const rentalRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "approved", "active", "completed", "rejected"],
+      enum: ["pending", "approved", "active", "return_pending", "completed", "rejected"],
       default: "pending"
     },
     rejectionReason: {

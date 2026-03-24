@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
+import { saveCurrentLocationForLoginRedirect } from "@/lib/authRedirect";
 
 export function ProtectedPage({ children }) {
   const router = useRouter();
@@ -11,6 +12,7 @@ export function ProtectedPage({ children }) {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
+      saveCurrentLocationForLoginRedirect();
       router.replace("/login");
     }
   }, [isAuthenticated, isLoading, router]);

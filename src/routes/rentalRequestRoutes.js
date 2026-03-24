@@ -11,7 +11,8 @@ const {
   approveRentalRequest,
   rejectRentalRequest,
   startRentalRequest,
-  completeRentalRequest
+  initiateRentalReturn,
+  confirmRentalReturn
 } = require("../controllers/rentalRequestController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -19,9 +20,9 @@ const router = express.Router();
 
 const allowedRentalRequestFields = ["book", "startDate", "endDate"];
 const allowedRentalRequestQueryParams = ["status", "page", "limit"];
-const allowedRentalRequestStatuses = ["pending", "approved", "active", "completed", "rejected"];
-const allowedOwnerActiveRentalStatuses = ["approved", "active"];
-const allowedRenterActiveRentalStatuses = ["active"];
+const allowedRentalRequestStatuses = ["pending", "approved", "active", "return_pending", "completed", "rejected"];
+const allowedOwnerActiveRentalStatuses = ["approved", "active", "return_pending"];
+const allowedRenterActiveRentalStatuses = ["active", "return_pending"];
 
 const normalizeDate = (value) => {
   const date = new Date(value);
@@ -101,7 +102,7 @@ const getIncomingRentalRequestsValidation = [
   query("status")
     .optional()
     .isIn(allowedRentalRequestStatuses)
-    .withMessage("Status must be one of: pending, approved, active, completed, rejected"),
+    .withMessage("Status must be one of: pending, approved, active, return_pending, completed, rejected"),
   query("page")
     .optional()
     .isInt({ min: 1 })
@@ -164,7 +165,7 @@ const getOwnerActiveRentalRequestsValidation = [
   query("status")
     .optional()
     .isIn(allowedOwnerActiveRentalStatuses)
-    .withMessage("Status must be one of: approved, active"),
+    .withMessage("Status must be one of: approved, active, return_pending"),
   query("page")
     .optional()
     .isInt({ min: 1 })
@@ -191,7 +192,7 @@ const getRenterActiveRentalRequestsValidation = [
   query("status")
     .optional()
     .isIn(allowedRenterActiveRentalStatuses)
-    .withMessage("Status must be: active"),
+    .withMessage("Status must be one of: active, return_pending"),
   query("page")
     .optional()
     .isInt({ min: 1 })
@@ -212,7 +213,8 @@ router.get("/active/renter", protect, getRenterActiveRentalRequestsValidation, g
 router.put("/:id/approve", protect, rentalRequestActionValidation, approveRentalRequest);
 router.put("/:id/reject", protect, rejectRentalRequestValidation, rejectRentalRequest);
 router.post("/:id/start", protect, rentalRequestActionValidation, startRentalRequest);
-router.post("/:id/complete", protect, rentalRequestActionValidation, completeRentalRequest);
+router.post("/:id/return-initiate", protect, rentalRequestActionValidation, initiateRentalReturn);
+router.post("/:id/confirm-return", protect, rentalRequestActionValidation, confirmRentalReturn);
 router.post("/", protect, createRentalRequestValidation, createRentalRequest);
 
 module.exports = router;

@@ -187,13 +187,12 @@ export function MyListingsView() {
                     >
                       View details
                     </Link>
-                    <button
-                      type="button"
-                      disabled
-                      className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-400"
+                    <Link
+                      href={`/books/${book.id}/edit`}
+                      className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
                     >
-                      Edit later
-                    </button>
+                      Edit listing
+                    </Link>
                     <button
                       type="button"
                       onClick={() => handleDelete(book.id, book.title)}
