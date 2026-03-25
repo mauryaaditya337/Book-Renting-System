@@ -2,6 +2,7 @@ import "./globals.css";
 
 import { AppShell } from "@/components/AppShell";
 import { AuthProvider } from "@/components/AuthProvider";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata = {
   title: "BookRent",
@@ -15,6 +16,7 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <AppShell>{children}</AppShell>
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
