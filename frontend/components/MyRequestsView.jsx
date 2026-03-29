@@ -4,33 +4,22 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { ProtectedPage } from "@/components/ProtectedPage";
+import { ToastViewport } from "@/components/ToastViewport";
 import { useAuth } from "@/components/AuthProvider";
 import { BookCover } from "@/components/BookCover";
 import { apiRequest } from "@/lib/api";
+import { formatPrice } from "@/lib/books";
 import { getPrimaryBookImage, hydrateRequestBookImages } from "@/lib/bookImages";
 import {
   formatRequestDate,
   formatRequestDateTime,
+  getRequestPricingDetails,
   getRequestStatusTone,
+  isHistoricalRequestStatus,
   toRequestStatusLabel
 } from "@/lib/rentalRequests";
 
 const PAGE_LIMIT = 20;
-
-function normalizeWhatsAppPhoneNumber(phoneNumber = "") {
-  return String(phoneNumber).replace(/[^\d]/g, "");
-}
-
-function buildWhatsAppUrl(phoneNumber, bookTitle) {
-  const normalizedPhoneNumber = normalizeWhatsAppPhoneNumber(phoneNumber);
-
-  if (!normalizedPhoneNumber) {
-    return "";
-  }
-
-  const message = encodeURIComponent(`Hi, my request was approved for: ${bookTitle}`);
-  return `https://wa.me/${normalizedPhoneNumber}?text=${message}`;
-}
 
 export function MyRequestsView() {
   const { token } = useAuth();
@@ -115,10 +104,35 @@ export function MyRequestsView() {
     }
   };
 
+  const currentRequests = requests.filter((request) => !isHistoricalRequestStatus(request.status));
+  const historyRequests = requests.filter((request) => isHistoricalRequestStatus(request.status));
+
   return (
     <ProtectedPage>
       <section className="space-y-6">
-        <div className="rounded-[2rem] border border-white/60 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-8">
+        <ToastViewport
+          toasts={[
+            actionMessage
+              ? {
+                  id: `request-success-${actionMessage}`,
+                  tone: "success",
+                  title: "Request updated",
+                  message: actionMessage,
+                  onDismiss: () => setActionMessage("")
+                }
+              : null,
+            actionError
+              ? {
+                  id: `request-error-${actionError}`,
+                  tone: "error",
+                  title: "Action failed",
+                  message: actionError,
+                  onDismiss: () => setActionError("")
+                }
+              : null
+          ]}
+        />
+        <div className="ui-surface p-6 sm:p-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
@@ -133,26 +147,11 @@ export function MyRequestsView() {
               </p>
             </div>
 
-            <Link
-              href="/books"
-              className="rounded-2xl bg-teal-700 px-5 py-3 text-center font-medium text-white transition hover:bg-teal-800"
-            >
+            <Link href="/books" className="ui-btn-primary">
               Browse books
             </Link>
           </div>
         </div>
-
-        {actionMessage ? (
-          <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {actionMessage}
-          </p>
-        ) : null}
-
-        {actionError ? (
-          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {actionError}
-          </p>
-        ) : null}
 
         {isLoading ? (
           <LoadingState />
@@ -161,123 +160,21 @@ export function MyRequestsView() {
         ) : requests.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid gap-4">
-            {requests.map((request) => {
-              const ownerPhoneNumber = request.owner?.phoneNumber || "";
-              const whatsappUrl = buildWhatsAppUrl(ownerPhoneNumber, request.book?.title || "your book");
-              const canContactOnWhatsapp =
-                ["approved", "active"].includes(request.status) &&
-                normalizeWhatsAppPhoneNumber(ownerPhoneNumber).length >= 7;
-              const isSubmitting = activeRequestId === request.id;
-
-              return (
-              <article
-                key={request.id}
-                className="rounded-[2rem] border border-white/60 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.1)]"
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="flex gap-4">
-                    <BookCover
-                      src={getPrimaryBookImage(request.book)}
-                      title={request.book?.title}
-                      ratioClassName="aspect-[4/5]"
-                      containerClassName="w-24 shrink-0 rounded-[1.25rem]"
-                      labelClassName="tracking-[0.2em]"
-                    />
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-[0.25em] text-teal-700">
-                          {request.book?.category}
-                        </p>
-                        <h2 className="mt-2 text-xl font-semibold text-slate-900">
-                          {request.book?.title}
-                        </h2>
-                        <p className="mt-1 text-sm text-slate-600">by {request.book?.author}</p>
-                      </div>
-                      <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
-                        <InfoRow label="Owner" value={request.owner?.name || "Unknown"} />
-                        <InfoRow label="Start date" value={formatRequestDate(request.startDate)} />
-                        <InfoRow label="End date" value={formatRequestDate(request.endDate)} />
-                        <InfoRow label="Requested on" value={formatRequestDateTime(request.createdAt)} />
-                      </div>
-                      {request.status === "rejected" && request.rejectionReason ? (
-                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                          <p className="font-medium">Rejection reason</p>
-                          <p className="mt-1">{request.rejectionReason}</p>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-3 lg:items-end">
-                    <span
-                      className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${getRequestStatusTone(
-                        request.status
-                      )}`}
-                    >
-                      {toRequestStatusLabel(request.status)}
-                    </span>
-                    <Link
-                      href={`/books/${request.book?.id}`}
-                      className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-                    >
-                      View book
-                    </Link>
-                    {request.status === "pending" ? (
-                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700">
-                        Pending Approval
-                      </div>
-                    ) : null}
-                    {request.status === "rejected" ? (
-                      <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700">
-                        Request Rejected
-                      </div>
-                    ) : null}
-                    {request.status === "approved" ? (
-                      <button
-                        type="button"
-                        disabled={isSubmitting}
-                        onClick={() => handleRequestAction(request.id, "start")}
-                        className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-                      >
-                        {isSubmitting ? "Starting..." : "Start Rent"}
-                      </button>
-                    ) : null}
-                    {request.status === "active" ? (
-                      <button
-                        type="button"
-                        disabled={isSubmitting}
-                        onClick={() => handleRequestAction(request.id, "return-initiate")}
-                        className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-                      >
-                        {isSubmitting ? "Updating..." : "Return Book"}
-                      </button>
-                    ) : null}
-                    {request.status === "return_pending" ? (
-                      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700">
-                        Waiting for owner confirmation
-                      </div>
-                    ) : null}
-                    {request.status === "completed" ? (
-                      <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700">
-                        Completed
-                      </div>
-                    ) : null}
-                    {canContactOnWhatsapp ? (
-                      <a
-                        href={whatsappUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-2xl bg-emerald-600 px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-emerald-700"
-                      >
-                        Contact on WhatsApp
-                      </a>
-                    ) : null}
-                  </div>
-                </div>
-              </article>
-            );
-            })}
+          <div className="space-y-6">
+            <RequestSection
+              title="Current requests"
+              description="Pending, approved, active, and return-confirmation steps stay grouped here until the flow is finished."
+              requests={currentRequests}
+              activeRequestId={activeRequestId}
+              onRequestAction={handleRequestAction}
+            />
+            <RequestSection
+              title="History"
+              description="Completed and rejected requests move here so your ongoing items stay easy to scan."
+              requests={historyRequests}
+              activeRequestId={activeRequestId}
+              onRequestAction={handleRequestAction}
+            />
           </div>
         )}
       </section>
@@ -285,11 +182,253 @@ export function MyRequestsView() {
   );
 }
 
-function InfoRow({ label, value }) {
+function getStatusDetail(request, isSellRequest) {
+  if (request.status === "pending") {
+    return "Waiting for the owner to review your request.";
+  }
+
+  if (request.status === "approved" && !isSellRequest) {
+    return "Approved and ready for you to start the rental.";
+  }
+
+  if (request.status === "approved" && isSellRequest) {
+    return "The seller approved your purchase request.";
+  }
+
+  if (request.status === "active") {
+    return "Your rental is active. Return it when you're done.";
+  }
+
+  if (request.status === "return_pending") {
+    return "Return started. Waiting for owner confirmation.";
+  }
+
+  if (request.status === "completed") {
+    return "This request has been completed.";
+  }
+
+  if (request.status === "rejected") {
+    return "This request was not approved.";
+  }
+
+  return "Track the latest status of this request here.";
+}
+
+function getDateSummary(request, isSellRequest) {
+  if (isSellRequest) {
+    return "Purchase request";
+  }
+
+  return `${formatRequestDate(request.startDate)} - ${formatRequestDate(request.endDate)}`;
+}
+
+function RequestSection({ title, description, requests, activeRequestId, onRequestAction }) {
+  if (requests.length === 0) {
+    return null;
+  }
+
   return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+    <section className="space-y-4">
+      <div className="request-section-heading">
+        <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+      </div>
+
+      <div className="grid gap-4">
+        {requests.map((request) => {
+          const isSellRequest = request.book?.listingType === "sell";
+          const isSubmitting = activeRequestId === request.id;
+          const pricingDetails = getRequestPricingDetails(request);
+          const statusLabel = toRequestStatusLabel(request.status);
+          const statusTone = getRequestStatusTone(request.status);
+          const statusDetail = getStatusDetail(request, isSellRequest);
+          const ownerName = request.owner?.name || "Unknown";
+          const lifecycleNote = getLifecycleNote(request, isSellRequest);
+          const perDayRent = pricingDetails?.find((detail) => detail.label === "Approx per day")?.value || "";
+          const rentalDays = pricingDetails?.find((detail) => detail.label === "Rental days")?.value;
+          const rentSummaryMeta = `${perDayRent}${rentalDays ? ` - ${rentalDays} days` : ""}`;
+
+          return (
+            <article key={request.id} className="request-card ui-card p-4 sm:p-5 xl:p-6">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+                <div className="flex min-w-0 gap-4 xl:min-w-0 xl:flex-[1.1]">
+                  <BookCover
+                    src={getPrimaryBookImage(request.book)}
+                    title={request.book?.title}
+                    ratioClassName="aspect-[4/5]"
+                    containerClassName="w-24 shrink-0 rounded-[1.4rem] shadow-[0_20px_44px_rgba(15,23,42,0.12)] sm:w-28"
+                    labelClassName="tracking-[0.2em]"
+                  />
+                  <div className="min-w-0 space-y-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {request.book?.category ? (
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-700">
+                            {request.book?.category}
+                          </p>
+                        ) : null}
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                          {isSellRequest ? "Buy request" : "Rent request"}
+                        </span>
+                      </div>
+                      <h2 className="mt-2 text-lg font-semibold leading-tight text-slate-900 sm:text-[1.35rem]">
+                        {request.book?.title}
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {request.book?.author ? `by ${request.book.author}` : "Author unavailable"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 xl:min-w-0 xl:flex-1 xl:grid-cols-2">
+                  <InfoRow label="Owner" value={ownerName} />
+                  <InfoRow
+                    label={isSellRequest ? "Request type" : "Rental dates"}
+                    value={getDateSummary(request, isSellRequest)}
+                  />
+                  {pricingDetails ? (
+                    <InfoRow
+                      label="Rent summary"
+                      value={`${pricingDetails.find((detail) => detail.label === "Total rent")?.value || "Not available"} total`}
+                      meta={rentSummaryMeta || undefined}
+                    />
+                  ) : (
+                    <InfoRow
+                      label="Amount"
+                      value="See book details"
+                      meta="Pricing is handled on the book listing"
+                    />
+                  )}
+                  <InfoRow label="Requested on" value={formatRequestDateTime(request.createdAt)} />
+                  {!isSellRequest && request.book?.securityDeposit != null ? (
+                    <InfoRow label="Security deposit" value={formatPrice(request.book.securityDeposit)} />
+                  ) : null}
+                </div>
+
+                <div className="request-card__aside ui-subtle-card p-4 sm:p-5 xl:w-[18rem] xl:shrink-0">
+                  <div className="flex flex-col gap-4">
+                    <div className="space-y-3">
+                      <span
+                        className={`request-status-pill inline-flex w-fit rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] ${statusTone}`}
+                      >
+                        {statusLabel}
+                      </span>
+                      <p className="text-sm leading-6 text-slate-600">{statusDetail}</p>
+                      <div className="ui-trust-card">
+                        <p className="ui-trust-label">What happens next</p>
+                        <p className="ui-trust-copy">{lifecycleNote}</p>
+                      </div>
+                    </div>
+
+                    <div className="request-card__actions border-t border-slate-200/80 pt-4">
+                      <div className="flex flex-col gap-3">
+                        <Link href={`/books/${request.book?.id}`} className="ui-btn-secondary w-full px-4 py-2">
+                          View book
+                        </Link>
+                        {request.status === "pending" ? (
+                          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-700">
+                            Pending Approval
+                          </div>
+                        ) : null}
+                        {request.status === "rejected" ? (
+                          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700">
+                            Request Rejected
+                          </div>
+                        ) : null}
+                        {request.status === "approved" && !isSellRequest ? (
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={() => onRequestAction(request.id, "start")}
+                            className="ui-btn-dark w-full px-4 py-2"
+                          >
+                            {isSubmitting ? "Starting..." : "Start Rent"}
+                          </button>
+                        ) : null}
+                        {request.status === "active" && !isSellRequest ? (
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={() => onRequestAction(request.id, "return-initiate")}
+                            className="ui-btn-dark w-full px-4 py-2"
+                          >
+                            {isSubmitting ? "Updating..." : "Return Book"}
+                          </button>
+                        ) : null}
+                        {request.status === "return_pending" && !isSellRequest ? (
+                          <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700">
+                            Waiting for owner confirmation
+                          </div>
+                        ) : null}
+                        {request.status === "approved" && isSellRequest ? (
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-700">
+                            Seller approved your purchase request
+                          </div>
+                        ) : null}
+                        {request.status === "completed" ? (
+                          <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-sm font-medium text-teal-700">
+                            Completed
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {request.status === "rejected" && request.rejectionReason ? (
+                <div className="mt-4 rounded-[1.5rem] border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm text-rose-700">
+                  <p className="font-medium">Rejection reason</p>
+                  <p className="mt-1 leading-6">{request.rejectionReason}</p>
+                </div>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function getLifecycleNote(request, isSellRequest) {
+  if (request.status === "pending") {
+    return "The owner still needs to review this request before anything is reserved or started.";
+  }
+
+  if (request.status === "approved" && isSellRequest) {
+    return "Approval means the seller is ready to coordinate the purchase handoff with you.";
+  }
+
+  if (request.status === "approved") {
+    return "Approval reserves the book for you, but the rental is not active until you start it.";
+  }
+
+  if (request.status === "active") {
+    return `Keep an eye on the return window ending ${formatRequestDate(request.endDate)} so the handback stays smooth.`;
+  }
+
+  if (request.status === "return_pending") {
+    return "You already initiated the return. The flow closes once the owner confirms it.";
+  }
+
+  if (request.status === "completed") {
+    return "This request is fully closed out and stays here as a reliable record of the finished rental.";
+  }
+
+  if (request.status === "rejected") {
+    return "The owner did not approve this request, so no rental or handoff can proceed from it.";
+  }
+
+  return "Follow the current status here to understand the next safe step.";
+}
+
+function InfoRow({ label, value, meta }) {
+  return (
+    <div className="request-info-card rounded-2xl px-4 py-3">
       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{label}</p>
-      <p className="mt-1 font-medium text-slate-800">{value}</p>
+      <p className="mt-1 font-medium text-slate-800">{value || "Not available"}</p>
+      {meta ? <p className="mt-1 text-xs leading-5 text-slate-500">{meta}</p> : null}
     </div>
   );
 }
@@ -298,10 +437,7 @@ function LoadingState() {
   return (
     <div className="grid gap-4">
       {Array.from({ length: 3 }).map((_, index) => (
-        <div
-          key={index}
-          className="h-36 animate-pulse rounded-[2rem] border border-white/60 bg-white/70"
-        />
+        <RequestLoadingCard key={index} />
       ))}
     </div>
   );
@@ -309,33 +445,87 @@ function LoadingState() {
 
 function ErrorState({ message }) {
   return (
-    <div className="rounded-[2rem] border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
-      <h2 className="text-xl font-semibold">Unable to load requests</h2>
-      <p className="mt-2 text-sm leading-6">{message}</p>
+    <div className="ui-feedback-error ui-feedback-panel">
+      <h2 className="ui-feedback-title">Unable to load requests</h2>
+      <p className="ui-feedback-body">{message}</p>
     </div>
   );
 }
 
 function EmptyState() {
   return (
-    <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white/70 p-8 text-center shadow-sm">
-      <h2 className="text-2xl font-semibold text-slate-900">No outgoing requests yet</h2>
-      <p className="mt-3 text-sm leading-6 text-slate-600">
-        Browse available books and send your first request to start tracking approvals here.
-      </p>
-      <div className="mt-5 flex flex-wrap justify-center gap-3">
-        <Link
-          href="/books"
-          className="inline-flex rounded-2xl bg-teal-700 px-5 py-3 font-medium text-white transition hover:bg-teal-800"
-        >
-          Browse books
-        </Link>
-        <Link
-          href="/active-rentals"
-          className="inline-flex rounded-2xl bg-slate-100 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-200"
-        >
-          View active rentals
-        </Link>
+    <div className="request-empty-state">
+      <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="request-empty-main">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">My Requests</p>
+          <h2 className="mt-4 text-2xl font-semibold text-slate-900 sm:text-3xl">
+            No outgoing requests yet
+          </h2>
+          <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
+            Once you request a book, it will show up here with its status, rental timeline, and
+            next actions in one place.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href="/books" className="ui-btn-primary">
+              Browse books
+            </Link>
+            <Link href="/active-rentals" className="ui-btn-secondary">
+              View active rentals
+            </Link>
+          </div>
+        </div>
+
+        <div className="request-empty-side">
+          <div className="request-empty-panel">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">How this helps</p>
+            <p className="mt-2 text-sm font-medium text-slate-800">
+              Track approvals, returns, and completed rentals without digging through details.
+            </p>
+          </div>
+          <div className="request-empty-panel">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">What to do next</p>
+            <p className="mt-2 text-sm font-medium text-slate-800">
+              Explore listings, request a book you want, and come back here to follow the flow.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RequestLoadingCard() {
+  return (
+    <div className="request-card ui-card p-4 sm:p-5 xl:p-6">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+        <div className="flex min-w-0 gap-4 xl:flex-[1.1]">
+          <div className="ui-skeleton h-28 w-24 rounded-[1.4rem] sm:w-28" />
+          <div className="min-w-0 flex-1 space-y-4">
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <div className="ui-skeleton-pill w-24" />
+                <div className="ui-skeleton-pill w-24" />
+              </div>
+              <div className="ui-skeleton-title w-3/4" />
+              <div className="ui-skeleton-line w-1/2" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:flex-1 xl:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="ui-skeleton h-20 rounded-2xl" />
+          ))}
+        </div>
+
+        <div className="request-card__aside ui-subtle-card p-4 sm:p-5 xl:w-[18rem] xl:shrink-0">
+          <div className="space-y-3">
+            <div className="ui-skeleton-pill w-28" />
+            <div className="ui-skeleton-line w-full" />
+            <div className="ui-skeleton-button w-full" />
+            <div className="ui-skeleton-button w-full" />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { FieldMessage } from "@/components/FieldMessage";
 import { ProtectedPage } from "@/components/ProtectedPage";
 import { useAuth } from "@/components/AuthProvider";
+import { ToastViewport } from "@/components/ToastViewport";
 import { apiRequest } from "@/lib/api";
 
 const MAX_IMAGE_FIELDS = 3;
@@ -25,17 +26,15 @@ const initialFormData = {
   location: "",
   meetupLocation: "",
   depositNote: "",
-  availabilityStatus: "available",
   images: [""]
 };
 
 const conditionOptions = ["New", "Like New", "Good", "Fair", "Poor"];
-const availabilityOptions = ["available", "reserved", "rented", "sold"];
 const listingTypeOptions = [
   {
     value: "rent",
     label: "Rent",
-    description: "Show rental price and security deposit."
+    description: "Show weekly rent and security deposit."
   },
   {
     value: "sell",
@@ -45,7 +44,7 @@ const listingTypeOptions = [
   {
     value: "both",
     label: "Both",
-    description: "Offer renting and selling in one listing."
+    description: "Offer weekly rent and sale price in one listing."
   }
 ];
 
@@ -82,7 +81,6 @@ function toFormData(book) {
     location: book?.location || "",
     meetupLocation: book?.meetupLocation || "",
     depositNote: book?.listingType === "sell" ? "" : book?.depositNote || "",
-    availabilityStatus: book?.availabilityStatus || "available",
     images: withAtLeastOneImageField(book?.images || (book?.imageUrl ? [book.imageUrl] : [""]))
   };
 }
@@ -286,45 +284,36 @@ export function EditBookForm({ bookId }) {
     }
   };
 
-  const statusHelpText = useMemo(() => {
-    if (formData.availabilityStatus === "available") {
-      return "Visible and open for new requests.";
-    }
-
-    if (formData.availabilityStatus === "reserved") {
-      return "Approved for a renter, but not yet active.";
-    }
-
-    if (formData.availabilityStatus === "rented") {
-      return "Currently out with a renter.";
-    }
-
-    return "Marked as sold and no longer requestable.";
-  }, [formData.availabilityStatus]);
-
   return (
     <ProtectedPage>
       <section className="mx-auto max-w-4xl">
-        <div className="rounded-[2rem] border border-white/60 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-8">
+        <ToastViewport
+          toasts={[
+            successMessage
+              ? {
+                  id: `edit-book-success-${successMessage}`,
+                  tone: "success",
+                  title: "Listing updated",
+                  message: successMessage,
+                  onDismiss: () => setSuccessMessage("")
+                }
+              : null
+          ]}
+        />
+        <div className="ui-surface p-6 sm:p-8">
           <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">Edit Book</p>
           <h1 className="mt-3 text-3xl font-semibold text-slate-900 sm:text-4xl">
             Update your book listing
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-            Review the current details, update pricing or availability, and save your changes.
+            Review the current details, update pricing or description, and save your changes.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/my-listings"
-              className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-            >
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link href="/my-listings" className="ui-btn-secondary w-full px-4 py-2 sm:w-auto">
               Back to my listings
             </Link>
-            <Link
-              href={`/books/${bookId}`}
-              className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
-            >
+            <Link href={`/books/${bookId}`} className="ui-btn-dark w-full px-4 py-2 sm:w-auto">
               View book details
             </Link>
           </div>
@@ -348,138 +337,47 @@ export function EditBookForm({ bookId }) {
                 </div>
               ) : null}
 
-              <form className="mt-8 grid gap-5 sm:grid-cols-2" onSubmit={handleSubmit}>
+              <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                 <ListingTypeField
                   value={formData.listingType}
                   error={fieldErrors.listingType}
                   onChange={handleListingTypeChange}
                 />
-                <InputField
-                  label="Title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  error={fieldErrors.title}
-                  placeholder="Clean Code"
-                  required
-                />
-                <InputField
-                  label="Author"
-                  name="author"
-                  value={formData.author}
-                  onChange={handleChange}
-                  error={fieldErrors.author}
-                  placeholder="Robert C. Martin"
-                  required
-                />
-                <InputField
-                  label="ISBN"
-                  name="isbn"
-                  value={formData.isbn}
-                  onChange={handleChange}
-                  error={fieldErrors.isbn}
-                  placeholder="9780132350884"
-                />
-                <InputField
-                  label="Category"
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  error={fieldErrors.category}
-                  placeholder="Programming"
-                  required
-                />
-                <SelectField
-                  label="Condition"
-                  name="condition"
-                  value={formData.condition}
-                  onChange={handleChange}
-                  error={fieldErrors.condition}
-                  options={conditionOptions}
-                />
-                <InputField
-                  label="Location"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  error={fieldErrors.location}
-                  placeholder="Pune"
-                  required
-                />
-                <InputField
-                  label="Meetup Instructions"
-                  name="meetupLocation"
-                  value={formData.meetupLocation}
-                  onChange={handleChange}
-                  error={fieldErrors.meetupLocation}
-                  placeholder="e.g. Meet near library gate"
-                />
-                <SelectField
-                  label="Availability"
-                  name="availabilityStatus"
-                  value={formData.availabilityStatus}
-                  onChange={handleChange}
-                  error={fieldErrors.availabilityStatus}
-                  options={availabilityOptions}
-                  renderOptionLabel={(option) => option.charAt(0).toUpperCase() + option.slice(1)}
-                />
-                <InfoCard
-                  title="Availability guidance"
-                  description={statusHelpText}
-                  className="sm:col-span-2"
-                />
-                {isRentalListing ? (
-                  <InputField
-                    label="Rental Price"
-                    name="rentalPrice"
-                    type="number"
-                    value={formData.rentalPrice}
-                    onChange={handleChange}
-                    error={fieldErrors.rentalPrice}
-                    placeholder="55"
-                    required
-                    min="0"
-                    step="0.01"
-                  />
-                ) : null}
-                {isSaleListing ? (
-                  <InputField
-                    label="Sale Price"
-                    name="salePrice"
-                    type="number"
-                    value={formData.salePrice}
-                    onChange={handleChange}
-                    error={fieldErrors.salePrice}
-                    placeholder="250"
-                    required
-                    min="0"
-                    step="0.01"
-                  />
-                ) : null}
-                {isRentalListing ? (
-                  <InputField
-                    label="Security Deposit"
-                    name="securityDeposit"
-                    type="number"
-                    value={formData.securityDeposit}
-                    onChange={handleChange}
-                    error={fieldErrors.securityDeposit}
-                    placeholder="220"
-                    required
-                    min="0"
-                    step="0.01"
-                  />
-                ) : null}
-                {isRentalListing ? (
-                  <InputField
-                    label="Deposit Note (Optional)"
-                    name="depositNote"
-                    value={formData.depositNote}
-                    onChange={handleChange}
-                    error={fieldErrors.depositNote}
-                    placeholder="e.g. Rs100 refundable deposit"
-                  />
-                ) : null}
+                <FormSection title="Basic Info" description="Keep the listing details clear and easy to scan before saving your update.">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <InputField label="Title" name="title" value={formData.title} onChange={handleChange} error={fieldErrors.title} placeholder="Clean Code" required />
+                    <InputField label="Author" name="author" value={formData.author} onChange={handleChange} error={fieldErrors.author} placeholder="Robert C. Martin" required />
+                    <InputField label="ISBN" name="isbn" value={formData.isbn} onChange={handleChange} error={fieldErrors.isbn} placeholder="9780132350884" />
+                    <InputField label="Category" name="category" value={formData.category} onChange={handleChange} error={fieldErrors.category} placeholder="Programming" required />
+                    <SelectField label="Condition" name="condition" value={formData.condition} onChange={handleChange} error={fieldErrors.condition} options={conditionOptions} />
+                    <TextAreaField className="sm:col-span-2" label="Description" name="description" value={formData.description} onChange={handleChange} error={fieldErrors.description} placeholder="A short description of the book, its condition, and anything readers should know." required />
+                  </div>
+                </FormSection>
+
+                <FormSection title="Pricing" description="Show rental pricing first, then any sale price if this listing supports both paths.">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    {isRentalListing ? (
+                      <InputField label="Rent per week" name="rentalPrice" type="number" value={formData.rentalPrice} onChange={handleChange} error={fieldErrors.rentalPrice} placeholder="55" required min="0" step="0.01" />
+                    ) : null}
+                    {isSaleListing ? (
+                      <InputField label="Sale price" name="salePrice" type="number" value={formData.salePrice} onChange={handleChange} error={fieldErrors.salePrice} placeholder="250" required min="0" step="0.01" />
+                    ) : null}
+                    {isRentalListing ? (
+                      <InputField label="Security deposit" name="securityDeposit" type="number" value={formData.securityDeposit} onChange={handleChange} error={fieldErrors.securityDeposit} placeholder="220" required min="0" step="0.01" />
+                    ) : null}
+                    {isRentalListing ? (
+                      <InputField label="Deposit note (optional)" name="depositNote" value={formData.depositNote} onChange={handleChange} error={fieldErrors.depositNote} placeholder="e.g. Rs100 refundable deposit" />
+                    ) : null}
+                  </div>
+                </FormSection>
+
+                <FormSection title="Location" description="Make the pickup plan obvious so borrowers know where to meet you.">
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <InputField label="City or area" name="location" value={formData.location} onChange={handleChange} error={fieldErrors.location} placeholder="Pune" required />
+                    <InputField label="Meetup instructions" name="meetupLocation" value={formData.meetupLocation} onChange={handleChange} error={fieldErrors.meetupLocation} placeholder="e.g. Meet near library gate" />
+                  </div>
+                </FormSection>
+
                 <ImageUrlsField
                   images={formData.images}
                   error={fieldErrors.images}
@@ -487,26 +385,11 @@ export function EditBookForm({ bookId }) {
                   onChangeImage={handleImageChange}
                   onRemoveImage={handleRemoveImageField}
                 />
-                <TextAreaField
-                  label="Description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  error={fieldErrors.description}
-                  placeholder="A short description of the book, its condition, and anything readers should know."
-                  required
-                />
 
-                <div className="space-y-4 sm:col-span-2">
+                <div className="space-y-4">
                   {formError ? (
                     <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                       {formError}
-                    </p>
-                  ) : null}
-
-                  {successMessage ? (
-                    <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                      {successMessage}
                     </p>
                   ) : null}
 
@@ -514,14 +397,14 @@ export function EditBookForm({ bookId }) {
                     <button
                       type="submit"
                       disabled={isSubmitting || !isOwner}
-                      className="rounded-2xl bg-teal-700 px-5 py-3 font-medium text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                      className="ui-btn-primary w-full sm:w-auto"
                     >
                       {isSubmitting ? "Saving changes..." : "Save changes"}
                     </button>
                     <button
                       type="button"
                       onClick={() => router.push("/my-listings")}
-                      className="rounded-2xl bg-slate-100 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-200"
+                      className="ui-btn-secondary w-full sm:w-auto"
                     >
                       Cancel
                     </button>
@@ -536,23 +419,11 @@ export function EditBookForm({ bookId }) {
   );
 }
 
-function InfoCard({ className = "", title, description }) {
-  return (
-    <div className={`rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5 ${className}`.trim()}>
-      <p className="text-sm font-semibold text-slate-900">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-    </div>
-  );
-}
-
 function InputField({ className = "", error, label, ...props }) {
   return (
     <label className={`block ${className}`.trim()}>
       <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
-      <input
-        {...props}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
-      />
+      <input {...props} className="ui-input" />
       <FieldMessage message={error} />
     </label>
   );
@@ -562,10 +433,7 @@ function SelectField({ error, label, options, renderOptionLabel = (option) => op
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
-      <select
-        {...props}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
-      >
+      <select {...props} className="ui-select">
         {options.map((option) => (
           <option key={option} value={option}>
             {renderOptionLabel(option)}
@@ -627,13 +495,9 @@ function ListingTypeField({ value, error, onChange }) {
 
 function TextAreaField({ error, label, ...props }) {
   return (
-    <label className="block sm:col-span-2">
+    <label className={`block ${props.className || ""}`.trim()}>
       <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
-      <textarea
-        {...props}
-        rows={5}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
-      />
+      <textarea {...props} rows={5} className="ui-textarea" />
       <FieldMessage message={error} />
     </label>
   );
@@ -655,7 +519,7 @@ function ImageUrlsField({ images, error, onAddImage, onChangeImage, onRemoveImag
           type="button"
           onClick={onAddImage}
           disabled={!canAddMore}
-          className="rounded-2xl bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="ui-btn-light px-4 py-2"
         >
           Add image
         </button>
@@ -677,7 +541,7 @@ function ImageUrlsField({ images, error, onAddImage, onChangeImage, onRemoveImag
                   value={image}
                   onChange={(event) => onChangeImage(index, event.target.value)}
                   placeholder={`https://example.com/book-image-${index + 1}.jpg`}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
+                  className="ui-input"
                 />
               </label>
 
@@ -685,7 +549,7 @@ function ImageUrlsField({ images, error, onAddImage, onChangeImage, onRemoveImag
                 type="button"
                 onClick={() => onRemoveImage(index)}
                 disabled={images.length === 1}
-                className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                className="ui-btn-danger px-4 py-3"
               >
                 Remove
               </button>
@@ -696,5 +560,17 @@ function ImageUrlsField({ images, error, onAddImage, onChangeImage, onRemoveImag
 
       <FieldMessage message={error} />
     </div>
+  );
+}
+
+function FormSection({ title, description, children }) {
+  return (
+    <section className="ui-subtle-card p-5 sm:p-6">
+      <div className="mb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">{title}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+      </div>
+      {children}
+    </section>
   );
 }

@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { ProtectedPage } from "@/components/ProtectedPage";
+import { ToastViewport } from "@/components/ToastViewport";
 import { useAuth } from "@/components/AuthProvider";
 import { BookCover } from "@/components/BookCover";
 import { apiRequest } from "@/lib/api";
+import { formatPrice } from "@/lib/books";
 import {
   getPrimaryBookImage,
   hydrateRequestBookImages,
@@ -15,7 +17,9 @@ import {
 import {
   formatRequestDate,
   formatRequestDateTime,
+  getRequestPricingDetails,
   getRequestStatusTone,
+  isHistoricalRequestStatus,
   toRequestStatusLabel
 } from "@/lib/rentalRequests";
 
@@ -30,10 +34,25 @@ const STATUS_FILTERS = [
   { value: "completed", label: "Completed" }
 ];
 
+function normalizeWhatsAppPhoneNumber(phoneNumber = "") {
+  return String(phoneNumber).replace(/[^\d]/g, "");
+}
+
+function buildWhatsAppUrl(phoneNumber, bookTitle) {
+  const normalizedPhoneNumber = normalizeWhatsAppPhoneNumber(phoneNumber);
+
+  if (!normalizedPhoneNumber) {
+    return "";
+  }
+
+  const message = encodeURIComponent(`Hi, your request was approved for: ${bookTitle}`);
+  return `https://wa.me/${normalizedPhoneNumber}?text=${message}`;
+}
+
 export function IncomingRequestsView() {
   const { token } = useAuth();
   const [requests, setRequests] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("pending");
+  const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -159,10 +178,35 @@ export function IncomingRequestsView() {
     setRejectionReason("");
   };
 
+  const currentRequests = requests.filter((request) => !isHistoricalRequestStatus(request.status));
+  const historyRequests = requests.filter((request) => isHistoricalRequestStatus(request.status));
+
   return (
     <ProtectedPage>
       <section className="space-y-6">
-        <div className="rounded-[2rem] border border-white/60 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-8">
+        <ToastViewport
+          toasts={[
+            actionMessage
+              ? {
+                  id: `incoming-success-${actionMessage}`,
+                  tone: "success",
+                  title: "Request updated",
+                  message: actionMessage,
+                  onDismiss: () => setActionMessage("")
+                }
+              : null,
+            actionError
+              ? {
+                  id: `incoming-error-${actionError}`,
+                  tone: "error",
+                  title: "Action failed",
+                  message: actionError,
+                  onDismiss: () => setActionError("")
+                }
+              : null
+          ]}
+        />
+        <div className="ui-surface p-6 sm:p-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
@@ -177,15 +221,12 @@ export function IncomingRequestsView() {
               </p>
             </div>
 
-            <Link
-              href="/my-listings"
-              className="rounded-2xl bg-teal-700 px-5 py-3 text-center font-medium text-white transition hover:bg-teal-800"
-            >
+            <Link href="/my-listings" className="ui-btn-primary">
               View my listings
             </Link>
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap gap-2.5 sm:gap-3">
             {STATUS_FILTERS.map((filter) => {
               const isActive = statusFilter === filter.value;
 
@@ -207,18 +248,6 @@ export function IncomingRequestsView() {
           </div>
         </div>
 
-        {actionMessage ? (
-          <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {actionMessage}
-          </p>
-        ) : null}
-
-        {actionError ? (
-          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {actionError}
-          </p>
-        ) : null}
-
         {isLoading ? (
           <LoadingState />
         ) : errorMessage ? (
@@ -227,151 +256,51 @@ export function IncomingRequestsView() {
           <EmptyState statusFilter={statusFilter} />
         ) : (
           <div className="space-y-4">
-            <div className="grid gap-4">
-              {requests.map((request) => {
-                const isPending = request.status === "pending";
-                const isReturnPending = request.status === "return_pending";
-                const isSubmitting = activeRequestId === request.id;
-                const isRejectingThisRequest = rejectingRequestId === request.id;
-
-                return (
-                <article
-                  key={request.id}
-                  className="rounded-[2rem] border border-white/60 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.1)]"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="flex gap-4">
-                        <BookCover
-                          src={getPrimaryBookImage(request.book)}
-                          title={request.book?.title}
-                          ratioClassName="aspect-[4/5]"
-                          containerClassName="w-24 shrink-0 rounded-[1.25rem]"
-                          labelClassName="tracking-[0.2em]"
-                        />
-                        <div className="space-y-4">
-                        <div>
-                          <p className="text-xs font-medium uppercase tracking-[0.25em] text-teal-700">
-                            {request.book?.category}
-                          </p>
-                          <h2 className="mt-2 text-xl font-semibold text-slate-900">
-                            {request.book?.title}
-                          </h2>
-                          <p className="mt-1 text-sm text-slate-600">
-                            Requested by {request.renter?.name || "Unknown reader"}
-                          </p>
-                        </div>
-
-                        <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
-                          <InfoRow label="Reader" value={request.renter?.name || "Unknown reader"} />
-                          <InfoRow label="Start date" value={formatRequestDate(request.startDate)} />
-                          <InfoRow label="End date" value={formatRequestDate(request.endDate)} />
-                          <InfoRow
-                            label="Requested on"
-                            value={formatRequestDateTime(request.createdAt)}
-                          />
-                        </div>
-                      </div>
-                      </div>
-
-                      <div className="flex flex-col gap-3 lg:min-w-56 lg:items-end">
-                        <span
-                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${getRequestStatusTone(
-                            request.status
-                          )}`}
-                        >
-                          {toRequestStatusLabel(request.status)}
-                        </span>
-
-                        <div className="flex flex-col gap-3 sm:flex-row lg:w-full lg:flex-col">
-                          <Link
-                            href={`/books/${request.book?.id}`}
-                            className="rounded-2xl bg-slate-100 px-4 py-2 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-                          >
-                            View book
-                          </Link>
-
-                          {isPending ? (
-                            <>
-                              <button
-                                type="button"
-                                disabled={isSubmitting}
-                                onClick={() => handleAction(request.id, "approve")}
-                                className="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-                              >
-                                {isSubmitting ? "Updating..." : "Approve"}
-                              </button>
-                              <button
-                                type="button"
-                                disabled={isSubmitting}
-                                onClick={() => handleRejectStart(request.id)}
-                                className="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-                              >
-                                {isSubmitting ? "Updating..." : "Reject"}
-                              </button>
-                            </>
-                          ) : null}
-                          {isReturnPending ? (
-                            <button
-                              type="button"
-                              disabled={isSubmitting}
-                              onClick={() => handleAction(request.id, "confirm-return", undefined, "POST")}
-                              className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-                            >
-                              {isSubmitting ? "Updating..." : "Confirm Return"}
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-
-                    {request.status === "rejected" && request.rejectionReason ? (
-                      <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                        <p className="font-medium">Rejection reason</p>
-                        <p className="mt-1">{request.rejectionReason}</p>
-                      </div>
-                    ) : null}
-
-                    {isRejectingThisRequest ? (
-                      <div className="mt-4 rounded-[1.5rem] border border-rose-200 bg-rose-50 p-4">
-                        <label className="block">
-                          <span className="mb-2 block text-sm font-medium text-rose-900">
-                            Rejection reason
-                          </span>
-                          <textarea
-                            value={rejectionReason}
-                            onChange={(event) => setRejectionReason(event.target.value)}
-                            rows={3}
-                            className="w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
-                            placeholder="Tell the renter why this request cannot be approved."
-                          />
-                        </label>
-                        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                          <button
-                            type="button"
-                            disabled={isSubmitting || !rejectionReason.trim()}
-                            onClick={() => handleRejectSubmit(request.id)}
-                            className="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-                          >
-                            {isSubmitting ? "Rejecting..." : "Confirm rejection"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={isSubmitting}
-                            onClick={handleRejectCancel}
-                            className="rounded-2xl bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </article>
-                );
-              })}
-            </div>
+            {statusFilter ? (
+              <RequestGrid
+                requests={requests}
+                activeRequestId={activeRequestId}
+                rejectingRequestId={rejectingRequestId}
+                rejectionReason={rejectionReason}
+                setRejectionReason={setRejectionReason}
+                handleAction={handleAction}
+                handleRejectStart={handleRejectStart}
+                handleRejectSubmit={handleRejectSubmit}
+                handleRejectCancel={handleRejectCancel}
+              />
+            ) : (
+              <div className="space-y-6">
+                <RequestSection
+                  title="Current requests"
+                  description="Pending, approved, active, and return-pending requests stay together so owner actions are easy to spot."
+                  requests={currentRequests}
+                  activeRequestId={activeRequestId}
+                  rejectingRequestId={rejectingRequestId}
+                  rejectionReason={rejectionReason}
+                  setRejectionReason={setRejectionReason}
+                  handleAction={handleAction}
+                  handleRejectStart={handleRejectStart}
+                  handleRejectSubmit={handleRejectSubmit}
+                  handleRejectCancel={handleRejectCancel}
+                />
+                <RequestSection
+                  title="History"
+                  description="Completed and rejected requests stay separate from the work you still need to review."
+                  requests={historyRequests}
+                  activeRequestId={activeRequestId}
+                  rejectingRequestId={rejectingRequestId}
+                  rejectionReason={rejectionReason}
+                  setRejectionReason={setRejectionReason}
+                  handleAction={handleAction}
+                  handleRejectStart={handleRejectStart}
+                  handleRejectSubmit={handleRejectSubmit}
+                  handleRejectCancel={handleRejectCancel}
+                />
+              </div>
+            )}
 
             {totalPages > 1 ? (
-              <div className="flex flex-col gap-3 rounded-[2rem] border border-white/60 bg-white/80 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="request-pagination">
                 <p className="text-sm text-slate-600">
                   Page {currentPage} of {totalPages}
                 </p>
@@ -402,11 +331,261 @@ export function IncomingRequestsView() {
   );
 }
 
-function InfoRow({ label, value }) {
+function RequestSection(props) {
+  if (props.requests.length === 0) {
+    return null;
+  }
+
   return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+    <section className="space-y-4">
+      <div className="request-section-heading">
+        <h2 className="text-xl font-semibold text-slate-900">{props.title}</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-600">{props.description}</p>
+      </div>
+      <RequestGrid {...props} />
+    </section>
+  );
+}
+
+function getStatusDetail(request) {
+  if (request.status === "pending") {
+    return "New request waiting for your approval decision.";
+  }
+
+  if (request.status === "approved") {
+    return "Approved. The renter can now move this request forward.";
+  }
+
+  if (request.status === "active") {
+    return "Rental is active. Wait for the renter to initiate return.";
+  }
+
+  if (request.status === "return_pending") {
+    return "Return started. Confirm the book has been returned.";
+  }
+
+  if (request.status === "completed") {
+    return "This request has been completed successfully.";
+  }
+
+  if (request.status === "rejected") {
+    return "This request was declined.";
+  }
+
+  return "Review this request and take action if needed.";
+}
+
+function RequestGrid({
+  requests,
+  activeRequestId,
+  rejectingRequestId,
+  rejectionReason,
+  setRejectionReason,
+  handleAction,
+  handleRejectStart,
+  handleRejectSubmit,
+  handleRejectCancel
+}) {
+  return (
+    <div className="grid gap-4">
+      {requests.map((request) => {
+        const isPending = request.status === "pending";
+        const isReturnPending = request.status === "return_pending";
+        const isApproved = request.status === "approved";
+        const isSubmitting = activeRequestId === request.id;
+        const isRejectingThisRequest = rejectingRequestId === request.id;
+        const renterPhoneNumber = request.renter?.phoneNumber || "";
+        const whatsappUrl = buildWhatsAppUrl(renterPhoneNumber, request.book?.title || "your book");
+        const canContactOnWhatsapp =
+          isApproved && normalizeWhatsAppPhoneNumber(renterPhoneNumber).length >= 7;
+        const pricingDetails = getRequestPricingDetails(request);
+        const statusLabel = toRequestStatusLabel(request.status);
+        const statusTone = getRequestStatusTone(request.status);
+        const renterName = request.renter?.name || "Unknown reader";
+        const dailyRent = pricingDetails?.find((detail) => detail.label === "Approx per day")?.value || "";
+        const totalRent = pricingDetails?.find((detail) => detail.label === "Total rent")?.value;
+        const rentalDays = pricingDetails?.find((detail) => detail.label === "Rental days")?.value;
+        const weeklyRent = pricingDetails?.find((detail) => detail.label === "Rent per week")?.value;
+        const lifecycleNote = getIncomingLifecycleNote(request);
+
+        return (
+          <article key={request.id} className="request-card ui-card p-4 sm:p-5 xl:p-6">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+              <div className="flex min-w-0 gap-4 xl:min-w-0 xl:flex-[1.05]">
+                <BookCover
+                  src={getPrimaryBookImage(request.book)}
+                  title={request.book?.title}
+                  ratioClassName="aspect-[4/5]"
+                  containerClassName="w-24 shrink-0 rounded-[1.4rem] shadow-[0_20px_44px_rgba(15,23,42,0.12)] sm:w-28"
+                  labelClassName="tracking-[0.2em]"
+                />
+                <div className="min-w-0 space-y-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {request.book?.category ? (
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-700">
+                          {request.book?.category}
+                        </p>
+                      ) : null}
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                        Incoming request
+                      </span>
+                    </div>
+                    <h2 className="mt-2 text-lg font-semibold leading-tight text-slate-900 sm:text-[1.35rem]">
+                      {request.book?.title}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {request.book?.author ? `by ${request.book.author}` : "Author unavailable"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 xl:min-w-0 xl:flex-1 xl:grid-cols-2">
+                <InfoRow
+                  label="Requester"
+                  value={renterName}
+                  meta={
+                    request.renter?.phoneNumber ? `Phone: ${request.renter.phoneNumber}` : undefined
+                  }
+                />
+                <InfoRow
+                  label="Rental dates"
+                  value={`${formatRequestDate(request.startDate)} - ${formatRequestDate(request.endDate)}`}
+                />
+                <InfoRow
+                  label="Rent summary"
+                  value={totalRent ? `${totalRent} total` : "Not available"}
+                  meta={dailyRent || rentalDays ? `${dailyRent}${rentalDays ? ` - ${rentalDays} days` : ""}` : undefined}
+                />
+                <InfoRow label="Requested on" value={formatRequestDateTime(request.createdAt)} />
+                {weeklyRent ? <InfoRow label="Weekly rent" value={weeklyRent} /> : null}
+                {request.book?.securityDeposit != null ? (
+                  <InfoRow label="Security deposit" value={formatPrice(request.book.securityDeposit)} />
+                ) : null}
+              </div>
+
+              <div className="request-card__aside ui-subtle-card p-4 sm:p-5 xl:w-[18rem] xl:shrink-0">
+                <div className="flex flex-col gap-4">
+                  <div className="space-y-3">
+                    <span
+                      className={`request-status-pill inline-flex w-fit rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] ${statusTone}`}
+                    >
+                      {statusLabel}
+                    </span>
+                    <p className="text-sm leading-6 text-slate-600">{getStatusDetail(request)}</p>
+                    <div className="ui-trust-card">
+                      <p className="ui-trust-label">Owner guidance</p>
+                      <p className="ui-trust-copy">{lifecycleNote}</p>
+                    </div>
+                  </div>
+
+                  <div className="request-card__actions border-t border-slate-200/80 pt-4">
+                    <div className="flex flex-col gap-3">
+                      <Link href={`/books/${request.book?.id}`} className="ui-btn-secondary w-full px-4 py-2">
+                        View book
+                      </Link>
+
+                      {isPending ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={() => handleAction(request.id, "approve")}
+                            className="ui-btn-success w-full px-4 py-2"
+                          >
+                            {isSubmitting ? "Updating..." : "Approve"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={() => handleRejectStart(request.id)}
+                            className="ui-btn-danger w-full px-4 py-2"
+                          >
+                            {isSubmitting ? "Updating..." : "Reject"}
+                          </button>
+                        </>
+                      ) : null}
+                      {isReturnPending ? (
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => handleAction(request.id, "confirm-return", undefined, "POST")}
+                          className="ui-btn-dark w-full px-4 py-2"
+                        >
+                          {isSubmitting ? "Updating..." : "Confirm Return"}
+                        </button>
+                      ) : null}
+                      {canContactOnWhatsapp ? (
+                        <a
+                          href={whatsappUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ui-btn-success w-full px-4 py-2"
+                        >
+                          Contact on WhatsApp
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {request.status === "rejected" && request.rejectionReason ? (
+              <div className="mt-4 rounded-[1.5rem] border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm text-rose-700">
+                <p className="font-medium">Rejection reason</p>
+                <p className="mt-1 leading-6">{request.rejectionReason}</p>
+              </div>
+            ) : null}
+
+            {isRejectingThisRequest ? (
+              <div className="mt-4 rounded-[1.5rem] border border-rose-200 bg-rose-50 p-4">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-rose-900">
+                    Rejection reason
+                  </span>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(event) => setRejectionReason(event.target.value)}
+                    rows={3}
+                    className="w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-rose-400 focus:ring-4 focus:ring-rose-100"
+                    placeholder="Tell the renter why this request cannot be approved."
+                  />
+                </label>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    disabled={isSubmitting || !rejectionReason.trim()}
+                    onClick={() => handleRejectSubmit(request.id)}
+                    className="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  >
+                    {isSubmitting ? "Rejecting..." : "Confirm rejection"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={handleRejectCancel}
+                    className="rounded-2xl bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function InfoRow({ label, value, meta }) {
+  return (
+    <div className="request-info-card rounded-2xl px-4 py-3">
       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{label}</p>
-      <p className="mt-1 font-medium text-slate-800">{value}</p>
+      <p className="mt-1 font-medium text-slate-800">{value || "Not available"}</p>
+      {meta ? <p className="mt-1 text-xs leading-5 text-slate-500">{meta}</p> : null}
     </div>
   );
 }
@@ -415,10 +594,7 @@ function LoadingState() {
   return (
     <div className="grid gap-4">
       {Array.from({ length: 3 }).map((_, index) => (
-        <div
-          key={index}
-          className="h-40 animate-pulse rounded-[2rem] border border-white/60 bg-white/70"
-        />
+        <RequestLoadingCard key={index} />
       ))}
     </div>
   );
@@ -426,9 +602,9 @@ function LoadingState() {
 
 function ErrorState({ message }) {
   return (
-    <div className="rounded-[2rem] border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
-      <h2 className="text-xl font-semibold">Unable to load incoming requests</h2>
-      <p className="mt-2 text-sm leading-6">{message}</p>
+    <div className="ui-feedback-error ui-feedback-panel">
+      <h2 className="ui-feedback-title">Unable to load incoming requests</h2>
+      <p className="ui-feedback-body">{message}</p>
     </div>
   );
 }
@@ -437,28 +613,109 @@ function EmptyState({ statusFilter }) {
   const hasFilter = Boolean(statusFilter);
 
   return (
-    <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white/70 p-8 text-center shadow-sm">
-      <h2 className="text-2xl font-semibold text-slate-900">
-        {hasFilter ? "No requests in this status" : "No incoming requests yet"}
-      </h2>
-      <p className="mt-3 text-sm leading-6 text-slate-600">
-        {hasFilter
-          ? "Try another filter to review older request activity for your books."
-          : "When someone requests one of your books, it will appear here for review and approval."}
-      </p>
-      <div className="mt-5 flex flex-wrap justify-center gap-3">
-        <Link
-          href="/my-listings"
-          className="inline-flex rounded-2xl bg-teal-700 px-5 py-3 font-medium text-white transition hover:bg-teal-800"
-        >
-          Go to my listings
-        </Link>
-        <Link
-          href="/books/new"
-          className="inline-flex rounded-2xl bg-slate-100 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-200"
-        >
-          Add another book
-        </Link>
+    <div className="request-empty-state">
+      <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="request-empty-main">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
+            Incoming Requests
+          </p>
+          <h2 className="mt-4 text-2xl font-semibold text-slate-900 sm:text-3xl">
+            {hasFilter ? "No requests in this status" : "No incoming requests yet"}
+          </h2>
+          <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
+            {hasFilter
+              ? "Try another filter to review older request activity for your books."
+              : "When readers request your books, they will appear here with approval actions, rental details, and request status in one place."}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href="/my-listings" className="ui-btn-primary">
+              Go to my listings
+            </Link>
+            <Link href="/books/new" className="ui-btn-secondary">
+              Add another book
+            </Link>
+          </div>
+        </div>
+
+        <div className="request-empty-side">
+          <div className="request-empty-panel">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Why this matters</p>
+            <p className="mt-2 text-sm font-medium text-slate-800">
+              Keep pending decisions visible and handle approvals or returns quickly.
+            </p>
+          </div>
+          <div className="request-empty-panel">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Next step</p>
+            <p className="mt-2 text-sm font-medium text-slate-800">
+              Review your listings or add another book so new requests can start flowing in.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getIncomingLifecycleNote(request) {
+  if (request.status === "pending") {
+    return "Review the reader details and rental window before approving, because approval reserves the book.";
+  }
+
+  if (request.status === "approved") {
+    return "This request is approved, so the reader can now move the rental forward from their side.";
+  }
+
+  if (request.status === "active") {
+    return `The book is already out. Expect the return after ${formatRequestDate(request.endDate)} unless the renter reaches out earlier.`;
+  }
+
+  if (request.status === "return_pending") {
+    return "The renter has started the return flow. Confirm only after the handback is complete.";
+  }
+
+  if (request.status === "completed") {
+    return "The full request lifecycle is complete, so this now serves as a trustworthy history record.";
+  }
+
+  if (request.status === "rejected") {
+    return "This request was declined, so the book remains available for other readers if your listing status allows it.";
+  }
+
+  return "Use the current status and book details together before taking the next action.";
+}
+
+function RequestLoadingCard() {
+  return (
+    <div className="request-card ui-card p-4 sm:p-5 xl:p-6">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+        <div className="flex min-w-0 gap-4 xl:flex-[1.05]">
+          <div className="ui-skeleton h-28 w-24 rounded-[1.4rem] sm:w-28" />
+          <div className="min-w-0 flex-1 space-y-4">
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <div className="ui-skeleton-pill w-24" />
+                <div className="ui-skeleton-pill w-28" />
+              </div>
+              <div className="ui-skeleton-title w-3/4" />
+              <div className="ui-skeleton-line w-1/2" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:flex-1 xl:grid-cols-2">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="ui-skeleton h-20 rounded-2xl" />
+          ))}
+        </div>
+
+        <div className="request-card__aside ui-subtle-card p-4 sm:p-5 xl:w-[18rem] xl:shrink-0">
+          <div className="space-y-3">
+            <div className="ui-skeleton-pill w-28" />
+            <div className="ui-skeleton-line w-full" />
+            <div className="ui-skeleton-button w-full" />
+            <div className="ui-skeleton-button w-full" />
+          </div>
+        </div>
       </div>
     </div>
   );

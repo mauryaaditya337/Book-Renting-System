@@ -32,7 +32,6 @@ const allowedBookFields = [
   "location",
   "meetupLocation",
   "depositNote",
-  "availabilityStatus",
   "images",
   "imageUrl"
 ];
@@ -55,7 +54,6 @@ const allowedCreateBookFields = [
 ];
 
 const allowedConditions = ["New", "Like New", "Good", "Fair", "Poor"];
-const allowedAvailabilityStatuses = ["available", "reserved", "rented", "sold"];
 const allowedListingTypes = ["rent", "sell", "both"];
 const allowedBookQueryParams = ["search", "category", "location", "sortBy", "sortOrder", "page", "limit"];
 
@@ -311,14 +309,6 @@ const updateBookValidation = [
     .trim()
     .isIn(allowedListingTypes)
     .withMessage("Listing type must be one of: rent, sell, both"),
-  body("availabilityStatus")
-    .optional()
-    .isString()
-    .withMessage("Availability status must be a string")
-    .bail()
-    .trim()
-    .isIn(allowedAvailabilityStatuses)
-    .withMessage("Availability status must be one of: available, reserved, rented, sold"),
   body().custom((value) => {
     validateBookImagesPayload(value, { required: false });
     validateListingTypePayload(value, { requireCompletePricing: false });

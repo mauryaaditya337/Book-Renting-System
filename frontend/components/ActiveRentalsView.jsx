@@ -4,19 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { ProtectedPage } from "@/components/ProtectedPage";
+import { ToastViewport } from "@/components/ToastViewport";
 import { useAuth } from "@/components/AuthProvider";
 import { BookCover } from "@/components/BookCover";
 import { apiRequest } from "@/lib/api";
-import {
-  getPrimaryBookImage,
-  hydrateRequestBookImages,
-  mergeRequestWithBookImage
-} from "@/lib/bookImages";
-import {
-  formatRequestDate,
-  getRequestStatusTone,
-  toRequestStatusLabel
-} from "@/lib/rentalRequests";
+import { getPrimaryBookImage, hydrateRequestBookImages, mergeRequestWithBookImage } from "@/lib/bookImages";
+import { formatRequestDate, getRequestStatusTone, toRequestStatusLabel } from "@/lib/rentalRequests";
 
 const PAGE_LIMIT = 20;
 
@@ -88,21 +81,16 @@ export function ActiveRentalsView({ mode }) {
       setErrorMessage("");
 
       try {
-        const headers = {
-          Authorization: `Bearer ${token}`
-        };
+        const data = await apiRequest(`${config.apiPath}?page=${currentPage}&limit=${PAGE_LIMIT}`, {
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const requestsWithImages = await hydrateRequestBookImages(data.requests || []);
 
         if (isActive) {
-          const data = await apiRequest(
-            `${config.apiPath}?page=${currentPage}&limit=${PAGE_LIMIT}`,
-            {
-              cache: "no-store",
-              headers
-            }
-          );
-
-          const requestsWithImages = await hydrateRequestBookImages(data.requests || []);
-
           setRequests(requestsWithImages);
           setTotalPages(data.totalPages || 1);
         }
@@ -159,7 +147,29 @@ export function ActiveRentalsView({ mode }) {
   return (
     <ProtectedPage>
       <section className="space-y-6">
-        <div className="rounded-[2rem] border border-white/60 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-8">
+        <ToastViewport
+          toasts={[
+            actionMessage
+              ? {
+                  id: `rental-success-${actionMessage}`,
+                  tone: "success",
+                  title: "Rental updated",
+                  message: actionMessage,
+                  onDismiss: () => setActionMessage("")
+                }
+              : null,
+            actionError
+              ? {
+                  id: `rental-error-${actionError}`,
+                  tone: "error",
+                  title: "Action failed",
+                  message: actionError,
+                  onDismiss: () => setActionError("")
+                }
+              : null
+          ]}
+        />
+        <div className="ui-surface p-6 sm:p-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
@@ -173,26 +183,11 @@ export function ActiveRentalsView({ mode }) {
               </p>
             </div>
 
-            <Link
-              href={config.secondaryHref}
-              className="rounded-2xl bg-teal-700 px-5 py-3 text-center font-medium text-white transition hover:bg-teal-800"
-            >
+            <Link href={config.secondaryHref} className="ui-btn-primary">
               {config.secondaryLabel}
             </Link>
           </div>
         </div>
-
-        {actionMessage ? (
-          <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {actionMessage}
-          </p>
-        ) : null}
-
-        {actionError ? (
-          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {actionError}
-          </p>
-        ) : null}
 
         {isLoading ? (
           <LoadingState />
@@ -209,73 +204,141 @@ export function ActiveRentalsView({ mode }) {
                   mode === "renter"
                     ? request.status === "active"
                     : request.status === "return_pending";
+                const statusLabel = toRequestStatusLabel(request.status);
+                const statusTone = getRequestStatusTone(request.status);
+                const lifecycleNote = getRentalLifecycleNote(mode, request, canAct, config.actionLabel);
+                const timelineSteps = getRentalTimelineSteps(request.status);
+                const dueState = getDueState(request);
+                const nextStepLabel = getNextStepLabel(mode, request, canAct, config.actionLabel);
+                const dueSummary = getDueSummary(request, dueState);
+                const dueTone = getDueTone(dueState.level);
 
                 return (
-                  <article
-                    key={request.id}
-                    className="rounded-[2rem] border border-white/60 bg-white/80 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.1)]"
-                  >
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="flex gap-4">
+                  <article key={request.id} className="request-card ui-card p-4 sm:p-5 xl:p-6">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+                      <div className="flex min-w-0 gap-4 xl:min-w-0 xl:flex-[1.05]">
                         <BookCover
                           src={getPrimaryBookImage(request.book)}
                           title={request.book?.title}
                           ratioClassName="aspect-[4/5]"
-                          containerClassName="w-24 shrink-0 rounded-[1.25rem]"
+                          containerClassName="w-24 shrink-0 rounded-[1.4rem] shadow-[0_20px_44px_rgba(15,23,42,0.12)] sm:w-28"
                           labelClassName="tracking-[0.2em]"
                         />
-                        <div className="space-y-4">
-                        <div>
-                          <p className="text-xs font-medium uppercase tracking-[0.25em] text-teal-700">
-                            {request.book?.category}
-                          </p>
-                          <h2 className="mt-2 text-xl font-semibold text-slate-900">
-                            {request.book?.title}
-                          </h2>
-                          <p className="mt-1 text-sm text-slate-600">
-                            {config.primaryLabel}: {getCounterpartyName(mode, request)}
-                          </p>
-                        </div>
+                        <div className="min-w-0 space-y-4">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {request.book?.category ? (
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-700">
+                                  {request.book?.category}
+                                </p>
+                              ) : null}
+                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                                {mode === "renter" ? "Live rental" : "Managed rental"}
+                              </span>
+                            </div>
+                            <h2 className="mt-2 text-lg font-semibold leading-tight text-slate-900 sm:text-[1.35rem]">
+                              {request.book?.title}
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-600">
+                              {request.book?.author ? `by ${request.book.author}` : "Author unavailable"}
+                            </p>
+                          </div>
 
-                        <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
-                          <InfoRow
-                            label={config.primaryLabel}
-                            value={getCounterpartyName(mode, request)}
-                          />
-                          <InfoRow label="Start date" value={formatRequestDate(request.startDate)} />
-                          <InfoRow label="End date" value={formatRequestDate(request.endDate)} />
-                          <InfoRow label="Status" value={toRequestStatusLabel(request.status)} />
+                          <div className="rounded-[1.35rem] border border-slate-200/80 bg-white/80 p-4 shadow-sm">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                  Rental progress
+                                </p>
+                                <p className="mt-1 text-sm text-slate-600">
+                                  Follow the lifecycle from approval through completion.
+                                </p>
+                              </div>
+                              <span
+                                className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] ${statusTone}`}
+                              >
+                                {statusLabel}
+                              </span>
+                            </div>
+
+                            <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                              {timelineSteps.map((step, index) => (
+                                <LifecycleStep
+                                  key={step.key}
+                                  step={step}
+                                  isLast={index === timelineSteps.length - 1}
+                                />
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2 xl:min-w-0 xl:flex-1 xl:grid-cols-2">
+                        <InfoRow label={config.primaryLabel} value={getCounterpartyName(mode, request)} />
+                        <InfoRow
+                          label="Rental dates"
+                          value={`${formatRequestDate(request.startDate)} - ${formatRequestDate(request.endDate)}`}
+                          meta="Start and end dates currently attached to this rental."
+                        />
+                        <InfoRow
+                          label="Due date"
+                          value={formatRequestDate(request.endDate)}
+                          meta={dueSummary}
+                          toneClassName={dueTone}
+                        />
+                        <InfoRow label="Current state" value={statusLabel} meta={lifecycleNote} />
+                        <InfoRow
+                          label="What happens next"
+                          value={nextStepLabel.title}
+                          meta={nextStepLabel.detail}
+                        />
                       </div>
 
-                      <div className="flex flex-col gap-3 lg:min-w-56 lg:items-end">
-                        <span
-                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${getRequestStatusTone(
-                            request.status
-                          )}`}
-                        >
-                          {toRequestStatusLabel(request.status)}
-                        </span>
+                      <div className="request-card__aside ui-subtle-card p-4 sm:p-5 xl:w-[18rem] xl:shrink-0">
+                        <div className="flex flex-col gap-4">
+                          <div className="space-y-3">
+                            <div className={`rental-status-panel ${dueTone}`}>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-current/75">
+                                Timing
+                              </p>
+                              <p className="mt-2 text-lg font-semibold text-current">{dueSummary}</p>
+                              <p className="mt-2 text-sm leading-6 text-current/85">
+                                Ends on {formatRequestDate(request.endDate)}.
+                              </p>
+                            </div>
+                            <div className="ui-trust-card">
+                              <p className="ui-trust-label">Lifecycle clarity</p>
+                              <p className="ui-trust-copy">{lifecycleNote}</p>
+                            </div>
+                            <div className="ui-trust-card">
+                              <p className="ui-trust-label">Expected next action</p>
+                              <p className="ui-trust-copy">{nextStepLabel.detail}</p>
+                            </div>
+                          </div>
 
-                        <div className="flex flex-col gap-3 sm:flex-row lg:w-full lg:flex-col">
-                          <Link
-                            href={`/books/${request.book?.id}`}
-                            className="rounded-2xl bg-slate-100 px-4 py-2 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-                          >
-                            View book
-                          </Link>
+                          <div className="request-card__actions border-t border-slate-200/80 pt-4">
+                            <div className="flex flex-col gap-3">
+                              <Link href={`/books/${request.book?.id}`} className="ui-btn-secondary w-full px-4 py-2">
+                                View book
+                              </Link>
 
-                          {canAct && config.actionVerb ? (
-                            <button
-                              type="button"
-                              disabled={isSubmitting}
-                              onClick={() => handleAction(request.id)}
-                              className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-                            >
-                              {isSubmitting ? "Updating..." : config.actionLabel}
-                            </button>
-                          ) : null}
+                              {canAct && config.actionVerb ? (
+                                <button
+                                  type="button"
+                                  disabled={isSubmitting}
+                                  onClick={() => handleAction(request.id)}
+                                  className="ui-btn-dark w-full px-4 py-2"
+                                >
+                                  {isSubmitting ? "Updating..." : config.actionLabel}
+                                </button>
+                              ) : (
+                                <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm font-medium text-slate-600 shadow-sm">
+                                  {nextStepLabel.title}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -285,7 +348,7 @@ export function ActiveRentalsView({ mode }) {
             </div>
 
             {totalPages > 1 ? (
-              <div className="flex flex-col gap-3 rounded-[2rem] border border-white/60 bg-white/80 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="request-pagination">
                 <p className="text-sm text-slate-600">
                   Page {currentPage} of {totalPages}
                 </p>
@@ -320,11 +383,12 @@ function getCounterpartyName(mode, request) {
   return mode === "renter" ? request.owner?.name || "Unknown owner" : request.renter?.name || "Unknown renter";
 }
 
-function InfoRow({ label, value }) {
+function InfoRow({ label, value, meta, toneClassName = "" }) {
   return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+    <div className={`request-info-card rounded-2xl px-4 py-3 ${toneClassName}`}>
       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{label}</p>
-      <p className="mt-1 font-medium text-slate-800">{value}</p>
+      <p className="mt-1 font-medium text-slate-800">{value || "Not available"}</p>
+      {meta ? <p className="mt-1 text-xs leading-5 text-slate-500">{meta}</p> : null}
     </div>
   );
 }
@@ -333,10 +397,7 @@ function LoadingState() {
   return (
     <div className="grid gap-4">
       {Array.from({ length: 3 }).map((_, index) => (
-        <div
-          key={index}
-          className="h-40 animate-pulse rounded-[2rem] border border-white/60 bg-white/70"
-        />
+        <RentalLoadingCard key={index} />
       ))}
     </div>
   );
@@ -344,33 +405,289 @@ function LoadingState() {
 
 function ErrorState({ message, title }) {
   return (
-    <div className="rounded-[2rem] border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
-      <h2 className="text-xl font-semibold">Unable to load {title.toLowerCase()}</h2>
-      <p className="mt-2 text-sm leading-6">{message}</p>
+    <div className="ui-feedback-error ui-feedback-panel">
+      <h2 className="ui-feedback-title">Unable to load {title.toLowerCase()}</h2>
+      <p className="ui-feedback-body">{message}</p>
     </div>
   );
 }
 
 function EmptyState({ config }) {
   return (
-    <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white/70 p-8 text-center shadow-sm">
-      <h2 className="text-2xl font-semibold text-slate-900">{config.emptyTitle}</h2>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{config.emptyDescription}</p>
-      <div className="mt-5 flex flex-wrap justify-center gap-3">
-        <Link
-          href={config.ctaHref}
-          className="inline-flex rounded-2xl bg-teal-700 px-5 py-3 font-medium text-white transition hover:bg-teal-800"
+    <div className="request-empty-state">
+      <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="request-empty-main">
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
+            {config.eyebrow}
+          </p>
+          <h2 className="mt-4 text-2xl font-semibold text-slate-900 sm:text-3xl">
+            {config.emptyTitle}
+          </h2>
+          <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
+            {config.emptyDescription}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href={config.ctaHref} className="ui-btn-primary">
+              {config.ctaLabel}
+            </Link>
+            {config.secondaryEmptyHref ? (
+              <Link href={config.secondaryEmptyHref} className="ui-btn-secondary">
+                {config.secondaryEmptyLabel}
+              </Link>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="request-empty-side">
+          <div className="request-empty-panel">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">How this helps</p>
+            <p className="mt-2 text-sm font-medium text-slate-800">
+              Keep live rentals visible and make the next action obvious at a glance.
+            </p>
+          </div>
+          <div className="request-empty-panel">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">What to do next</p>
+            <p className="mt-2 text-sm font-medium text-slate-800">
+              Visit the linked request screen or browse books to start the next rental flow.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getRentalLifecycleNote(mode, request, canAct, actionLabel) {
+  if (request.status === "approved") {
+    return mode === "renter"
+      ? "Approved means the rental is ready to begin, but it is not actively out until the handoff starts."
+      : "Approved means the reservation is set. The renter still needs to move the rental into the active stage.";
+  }
+
+  if (mode === "renter") {
+    if (request.status === "return_pending") {
+      return "You already started the return flow. Keep this rental visible until the owner confirms the handback.";
+    }
+
+    if (request.status === "completed") {
+      return "This rental has been fully closed out and now serves as a clean record of the finished handoff.";
+    }
+
+    return canAct
+      ? `This rental stays active until you choose "${actionLabel}". The expected end date is ${formatRequestDate(request.endDate)}.`
+      : "The owner is still part of the closing step, so keep the return status visible until it is confirmed.";
+  }
+
+  if (request.status === "active") {
+    return `The book is still out with the renter. Expect the return flow around ${formatRequestDate(request.endDate)} unless they reach out earlier.`;
+  }
+
+  if (request.status === "completed") {
+    return "This rental has been fully completed, so this card remains only as an operational history record.";
+  }
+
+  return canAct
+    ? `The renter already initiated the handback. Use "${actionLabel}" only after the book is physically returned.`
+    : "This rental remains part of your active owner record until the return flow is finished.";
+}
+
+function getRentalTimelineSteps(status) {
+  const order = ["approved", "active", "return_pending", "completed"];
+  const currentIndex = order.indexOf(status);
+
+  return order.map((key, index) => ({
+    key,
+    label: toRequestStatusLabel(key),
+    isCurrent: key === status,
+    isComplete: currentIndex > index,
+    isUpcoming: currentIndex < index
+  }));
+}
+
+function LifecycleStep({ step, isLast }) {
+  return (
+    <div className="flex items-center gap-3 sm:flex-col sm:items-start">
+      <div className="flex items-center gap-3 sm:w-full">
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
+            step.isCurrent
+              ? "border-slate-900 bg-slate-900 text-white"
+              : step.isComplete
+                ? "border-teal-200 bg-teal-50 text-teal-700"
+                : "border-slate-200 bg-white text-slate-400"
+          }`}
         >
-          {config.ctaLabel}
-        </Link>
-        {config.secondaryEmptyHref ? (
-          <Link
-            href={config.secondaryEmptyHref}
-            className="inline-flex rounded-2xl bg-slate-100 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-200"
-          >
-            {config.secondaryEmptyLabel}
-          </Link>
-        ) : null}
+          {step.isComplete ? "OK" : step.isCurrent ? "NOW" : ""}
+        </span>
+        {!isLast ? <span className="h-px flex-1 bg-slate-200 sm:hidden" /> : null}
+      </div>
+      <div className="min-w-0">
+        <p
+          className={`text-sm font-semibold ${
+            step.isCurrent ? "text-slate-900" : step.isComplete ? "text-teal-700" : "text-slate-500"
+          }`}
+        >
+          {step.label}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          {step.isCurrent ? "Current stage" : step.isComplete ? "Finished" : "Upcoming"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function getDueState(request) {
+  const endDate = new Date(request.endDate);
+  const now = new Date();
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const diffDays = Math.ceil((endDate.getTime() - now.getTime()) / msPerDay);
+
+  if (Number.isNaN(diffDays)) {
+    return { level: "normal", diffDays: null };
+  }
+
+  if (request.status === "completed") {
+    return { level: "complete", diffDays };
+  }
+
+  if (request.status === "return_pending") {
+    return { level: "pending", diffDays };
+  }
+
+  if (diffDays < 0) {
+    return { level: "overdue", diffDays };
+  }
+
+  if (diffDays <= 2) {
+    return { level: "urgent", diffDays };
+  }
+
+  return { level: "normal", diffDays };
+}
+
+function getDueSummary(request, dueState) {
+  if (dueState.level === "complete") {
+    return "Rental completed";
+  }
+
+  if (dueState.level === "pending") {
+    return "Waiting for return confirmation";
+  }
+
+  if (dueState.diffDays == null) {
+    return "End date available";
+  }
+
+  if (dueState.level === "overdue") {
+    return `${Math.abs(dueState.diffDays)} day${Math.abs(dueState.diffDays) === 1 ? "" : "s"} overdue`;
+  }
+
+  if (dueState.diffDays === 0) {
+    return "Due today";
+  }
+
+  return `${dueState.diffDays} day${dueState.diffDays === 1 ? "" : "s"} left`;
+}
+
+function getDueTone(level) {
+  if (level === "overdue") {
+    return "rental-timing-overdue";
+  }
+
+  if (level === "urgent") {
+    return "rental-timing-urgent";
+  }
+
+  if (level === "pending") {
+    return "rental-timing-pending";
+  }
+
+  if (level === "complete") {
+    return "rental-timing-complete";
+  }
+
+  return "rental-timing-normal";
+}
+
+function getNextStepLabel(mode, request, canAct, actionLabel) {
+  if (request.status === "approved") {
+    return mode === "renter"
+      ? {
+          title: "Ready to start",
+          detail: "The rental is approved and waiting to move into the active stage after the handoff."
+        }
+      : {
+          title: "Waiting for renter to start",
+          detail: "The reservation is approved. The renter still needs to move the rental forward from their side."
+        };
+  }
+
+  if (request.status === "active") {
+    return mode === "renter"
+      ? {
+          title: canAct ? actionLabel : "Rental in progress",
+          detail: canAct
+            ? "Use the return action once you are ready to hand the book back."
+            : "Keep the rental active until you are ready to begin the return flow."
+        }
+      : {
+          title: "Wait for return start",
+          detail: "The book is still out. The next owner-side action begins only after the renter starts the return."
+        };
+  }
+
+  if (request.status === "return_pending") {
+    return mode === "renter"
+      ? {
+          title: "Waiting for owner confirmation",
+          detail: "Your return was started successfully. The flow closes once the owner confirms receipt."
+        }
+      : {
+          title: canAct ? actionLabel : "Check handback",
+          detail: canAct
+            ? "Confirm the return only after the book is physically back with you."
+            : "The return flow is open. Verify the handback before closing the rental."
+        };
+  }
+
+  return {
+    title: "Rental completed",
+    detail: "This rental has already finished successfully."
+  };
+}
+
+function RentalLoadingCard() {
+  return (
+    <div className="request-card ui-card p-4 sm:p-5 xl:p-6">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+        <div className="flex min-w-0 gap-4 xl:flex-[1.05]">
+          <div className="ui-skeleton h-28 w-24 rounded-[1.4rem] sm:w-28" />
+          <div className="min-w-0 flex-1 space-y-4">
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <div className="ui-skeleton-pill w-24" />
+                <div className="ui-skeleton-pill w-24" />
+              </div>
+              <div className="ui-skeleton-title w-3/4" />
+              <div className="ui-skeleton-line w-1/2" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:flex-1 xl:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="ui-skeleton h-20 rounded-2xl" />
+          ))}
+        </div>
+
+        <div className="request-card__aside ui-subtle-card p-4 sm:p-5 xl:w-[18rem] xl:shrink-0">
+          <div className="space-y-3">
+            <div className="ui-skeleton-pill w-24" />
+            <div className="ui-skeleton-line w-full" />
+            <div className="ui-skeleton-button w-full" />
+          </div>
+        </div>
       </div>
     </div>
   );

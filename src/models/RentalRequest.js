@@ -25,6 +25,26 @@ const rentalRequestSchema = new mongoose.Schema(
       type: Date,
       required: [true, "End date is required"]
     },
+    weeklyRentSnapshot: {
+      type: Number,
+      default: 0,
+      min: [0, "Weekly rent snapshot must be at least 0"]
+    },
+    perDayRentSnapshot: {
+      type: Number,
+      default: 0,
+      min: [0, "Per-day rent snapshot must be at least 0"]
+    },
+    rentalDays: {
+      type: Number,
+      default: 0,
+      min: [0, "Rental days must be at least 0"]
+    },
+    totalRent: {
+      type: Number,
+      default: 0,
+      min: [0, "Total rent must be at least 0"]
+    },
     status: {
       type: String,
       enum: ["pending", "approved", "active", "return_pending", "completed", "rejected"],

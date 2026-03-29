@@ -124,7 +124,6 @@ const updateOwnBookListing = asyncHandler(async (req, res) => {
     "location",
     "meetupLocation",
     "depositNote",
-    "availabilityStatus",
     "images",
     "imageUrl"
   ];

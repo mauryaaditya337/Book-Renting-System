@@ -2,7 +2,7 @@ export function formatPrice(value) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0
+    maximumFractionDigits: 2
   }).format(value || 0);
 }
 
@@ -10,10 +10,19 @@ export function getListingType(book) {
   return book?.listingType || "rent";
 }
 
+export function roundPrice(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+export function getApproxPerDayRent(weeklyRent) {
+  return roundPrice((Number(weeklyRent) || 0) / 7);
+}
+
 export function getListingPriceSummary(book) {
   const listingType = getListingType(book);
   const rentalPrice = formatPrice(book?.rentalPrice);
   const salePrice = formatPrice(book?.salePrice);
+  const perDayRent = formatPrice(getApproxPerDayRent(book?.rentalPrice));
 
   if (listingType === "sell") {
     return {
@@ -21,26 +30,32 @@ export function getListingPriceSummary(book) {
       primaryValue: salePrice,
       secondaryLabel: "",
       secondaryValue: "",
+      approxDailyLabel: "",
+      approxDailyValue: "",
       inlineSummary: `Price: ${salePrice}`
     };
   }
 
   if (listingType === "both") {
     return {
-      primaryLabel: "Rent",
-      primaryValue: `${rentalPrice}/day`,
+      primaryLabel: "Rent per week",
+      primaryValue: `${rentalPrice}/week`,
       secondaryLabel: "Buy",
       secondaryValue: salePrice,
-      inlineSummary: `Rent: ${rentalPrice}/day | Buy: ${salePrice}`
+      approxDailyLabel: "Approx per day",
+      approxDailyValue: `≈ ${perDayRent}/day`,
+      inlineSummary: `Rent: ${rentalPrice}/week | Approx: ${perDayRent}/day | Buy: ${salePrice}`
     };
   }
 
   return {
-    primaryLabel: "Rental price",
-    primaryValue: `${rentalPrice}/day`,
+    primaryLabel: "Rent per week",
+    primaryValue: `${rentalPrice}/week`,
     secondaryLabel: "",
     secondaryValue: "",
-    inlineSummary: `Rent: ${rentalPrice}/day`
+    approxDailyLabel: "Approx per day",
+    approxDailyValue: `≈ ${perDayRent}/day`,
+    inlineSummary: `Rent: ${rentalPrice}/week | Approx: ${perDayRent}/day`
   };
 }
 
