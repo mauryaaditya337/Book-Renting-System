@@ -132,13 +132,13 @@ export function BarcodeScannerPanel({ onDetected, onError, isLookupInProgress })
   };
 
   return (
-    <div className="mt-6 rounded-[1.5rem] border border-sky-100 bg-sky-50/70 p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+    <div className="add-book-scanner-panel mt-4 rounded-[1.5rem] border border-sky-100 bg-sky-50/70 p-4 sm:mt-5 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <button
           type="button"
           onClick={startScanner}
           disabled={isStarting || isScanning || isLookupInProgress}
-          className="rounded-2xl bg-teal-700 px-5 py-3 font-medium text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          className="ui-btn-primary"
         >
           {isStarting ? "Starting camera..." : isScanning ? "Camera active" : "Start scanning"}
         </button>
@@ -146,7 +146,7 @@ export function BarcodeScannerPanel({ onDetected, onError, isLookupInProgress })
           type="button"
           onClick={handleRetry}
           disabled={isStarting || isLookupInProgress}
-          className="rounded-2xl bg-white px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="ui-btn-light disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
           Retry scan
         </button>
@@ -154,16 +154,16 @@ export function BarcodeScannerPanel({ onDetected, onError, isLookupInProgress })
           <button
             type="button"
             onClick={stopScanner}
-            className="rounded-2xl bg-slate-100 px-5 py-3 font-medium text-slate-700 transition hover:bg-slate-200"
+            className="ui-btn-secondary"
           >
             Stop camera
           </button>
         ) : null}
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-slate-600">{scannerMessage}</p>
+      <p className="mt-3.5 text-sm leading-6 text-slate-600">{scannerMessage}</p>
 
-      <div className="mt-4 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-950">
+      <div className="mt-3.5 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-950 shadow-[0_18px_42px_rgba(15,23,42,0.18)]">
         <div className="relative aspect-[4/3] w-full">
           <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
@@ -172,7 +172,7 @@ export function BarcodeScannerPanel({ onDetected, onError, isLookupInProgress })
         </div>
       </div>
 
-      <p className="mt-3 text-xs leading-5 text-slate-500">
+      <p className="mt-2.5 text-xs leading-5 text-slate-500">
         Tip: most books use an EAN-13 barcode that maps directly to the ISBN used by the existing autofill route.
       </p>
     </div>

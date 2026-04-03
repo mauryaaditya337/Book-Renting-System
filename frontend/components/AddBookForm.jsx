@@ -534,7 +534,7 @@ export function AddBookForm() {
 
   return (
     <ProtectedPage>
-      <section className="mx-auto max-w-4xl">
+      <section className="add-book-page mx-auto max-w-4xl">
         <ToastViewport
           toasts={[
             successMessage
@@ -557,20 +557,19 @@ export function AddBookForm() {
               : null
           ]}
         />
-        <div className="ui-surface p-6 sm:p-8">
+        <div className="ui-surface add-book-shell p-5 sm:p-7">
           <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">Add Book</p>
-          <h1 className="mt-3 text-3xl font-semibold text-slate-900 sm:text-4xl">
+          <h1 className="mt-2.5 text-3xl font-semibold text-slate-900 sm:mt-3 sm:text-[2.55rem]">
             Create a new book listing
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-            Begin with barcode scanning by default, then fall back to ISBN lookup or full manual
-            entry when needed. Every path leads into the same editable book form.
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600 sm:mt-2">
+            Start with barcode scanning, then use ISBN lookup or manual entry when needed.
           </p>
 
           <FlowStageHeader currentStage={flowStage} formSource={formSource} />
 
           {flowStage !== FLOW_STAGES.form ? (
-            <div className="mt-8 space-y-6">
+            <div className="mt-5 space-y-4 sm:mt-6 sm:space-y-5">
               <StageSwitcher
                 currentStage={flowStage}
                 onSelectIsbn={handleSwitchToIsbn}
@@ -583,7 +582,7 @@ export function AddBookForm() {
                   <StageCard
                     eyebrow="Step 1"
                     title="Scan the barcode"
-                    description="Point your camera at the back barcode. If we detect a valid ISBN, we will fetch the metadata and move you into the editable listing form."
+                    description="Point your camera at the back barcode. If we detect a valid ISBN, we will fetch the metadata and open the editable listing form."
                   />
                   <BarcodeScannerPanel
                     onDetected={handleDetectedBarcode}
@@ -592,13 +591,13 @@ export function AddBookForm() {
                   />
 
                   {isFetchingMetadata ? (
-                    <p className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+                    <p className="ui-feedback-success">
                       Barcode detected. Fetching book details from the ISBN metadata service...
                     </p>
                   ) : null}
 
                   {scanError ? (
-                    <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
+                    <div className="ui-feedback-warning">
                       <p>{scanError}</p>
                       {lastScannedCode ? (
                         <p className="mt-2 text-xs leading-5 text-amber-900">
@@ -609,21 +608,21 @@ export function AddBookForm() {
                         <button
                           type="button"
                           onClick={handleSwitchToScan}
-                          className="rounded-2xl bg-amber-600 px-4 py-2 font-medium text-white transition hover:bg-amber-700"
+                          className="ui-btn-warning"
                         >
                           Retry Scan
                         </button>
                         <button
                           type="button"
                           onClick={handleSwitchToIsbn}
-                          className="rounded-2xl bg-white px-4 py-2 font-medium text-amber-900 transition hover:bg-amber-100"
+                          className="ui-btn-light"
                         >
                           Enter ISBN
                         </button>
                         <button
                           type="button"
                           onClick={handleUseManualEntry}
-                          className="rounded-2xl bg-white px-4 py-2 font-medium text-amber-900 transition hover:bg-amber-100"
+                          className="ui-btn-light"
                         >
                           Fill Manually
                         </button>
@@ -636,13 +635,13 @@ export function AddBookForm() {
               ) : null}
 
               {flowStage === FLOW_STAGES.isbn ? (
-                <div className="rounded-[1.5rem] border border-teal-100 bg-teal-50/70 p-5">
+                <div className="add-book-stage-panel rounded-[1.5rem] border border-teal-100 bg-teal-50/70 p-4 sm:p-5">
                   <StageCard
                     eyebrow="Step 2"
                     title="Look up by ISBN"
-                    description="Enter an ISBN to fetch title, author, cover, and any other available metadata before opening the shared editable form."
+                    description="Enter an ISBN to fetch title, author, cover, and other available metadata before opening the shared editable form."
                   />
-                  <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <div className="mt-4 grid gap-3.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                     <InputField
                       label="Enter ISBN"
                       name="isbnLookup"
@@ -658,28 +657,28 @@ export function AddBookForm() {
                       type="button"
                       onClick={handleFetchDetails}
                       disabled={isFetchingMetadata || !isbnLookupValue.trim()}
-                      className="rounded-2xl bg-teal-700 px-5 py-3 font-medium text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-400 sm:min-w-40"
+                      className="ui-btn-primary sm:min-w-40"
                     >
                       {isFetchingMetadata ? "Fetching..." : "Fetch Details"}
                     </button>
                   </div>
 
                   {lookupError ? (
-                    <div className="mt-4 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
+                    <div className="ui-feedback-warning mt-4">
                       <p>{lookupError}</p>
                       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                         <button
                           type="button"
                           onClick={handleFetchDetails}
                           disabled={isFetchingMetadata || !isbnLookupValue.trim()}
-                          className="rounded-2xl bg-amber-600 px-4 py-2 font-medium text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                          className="ui-btn-warning"
                         >
                           Retry ISBN Lookup
                         </button>
                         <button
                           type="button"
                           onClick={handleUseManualEntry}
-                          className="rounded-2xl bg-white px-4 py-2 font-medium text-amber-900 transition hover:bg-amber-100"
+                          className="ui-btn-light"
                         >
                           Use Full Manual Entry
                         </button>
@@ -695,7 +694,7 @@ export function AddBookForm() {
 
           {flowStage === FLOW_STAGES.form ? (
             <>
-              <div className="mt-8 rounded-[1.5rem] border border-emerald-100 bg-emerald-50/80 p-5">
+              <div className="mt-6 rounded-[1.5rem] border border-emerald-100 bg-emerald-50/80 p-4 sm:mt-7 sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-emerald-900">
@@ -713,14 +712,14 @@ export function AddBookForm() {
                     <button
                       type="button"
                       onClick={handleSwitchToScan}
-                      className="rounded-2xl bg-white px-4 py-2 text-sm font-medium text-emerald-900 transition hover:bg-emerald-100"
+                      className="ui-btn-light"
                     >
                       Scan Again
                     </button>
                     <button
                       type="button"
                       onClick={handleSwitchToIsbn}
-                      className="rounded-2xl bg-white px-4 py-2 text-sm font-medium text-emerald-900 transition hover:bg-emerald-100"
+                      className="ui-btn-light"
                     >
                       Use ISBN
                     </button>
@@ -728,7 +727,7 @@ export function AddBookForm() {
                       <button
                         type="button"
                         onClick={handleUseManualEntry}
-                        className="rounded-2xl bg-white px-4 py-2 text-sm font-medium text-emerald-900 transition hover:bg-emerald-100"
+                        className="ui-btn-light"
                       >
                         Start Manual Entry
                       </button>
@@ -737,7 +736,7 @@ export function AddBookForm() {
                 </div>
               </div>
 
-              <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+              <form className="mt-6 space-y-5 sm:mt-7 sm:space-y-5" onSubmit={handleSubmit}>
                 <ListingTypeField
                   value={formData.listingType}
                   error={fieldErrors.listingType}
@@ -797,7 +796,7 @@ export function AddBookForm() {
 
                 <div className="space-y-4">
                   {formError ? (
-                    <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <p className="ui-feedback-error">
                       {formError}
                     </p>
                   ) : null}
@@ -853,11 +852,11 @@ function FlowStageHeader({ currentStage, formSource }) {
   ];
 
   return (
-    <div className="mt-8 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+    <div className="add-book-progress mt-5 grid gap-2 sm:mt-6 sm:grid-cols-2 md:grid-cols-4">
       {steps.map((step, index) => (
         <div
           key={step.id}
-          className={`rounded-[1.5rem] border px-4 py-4 transition ${
+          className={`rounded-[1.35rem] border px-3.5 py-3 transition ${
             step.isActive
               ? "border-teal-600 bg-teal-50 shadow-[0_12px_30px_rgba(13,148,136,0.12)]"
               : "border-slate-200 bg-slate-50/70"
@@ -898,22 +897,26 @@ function StageSwitcher({
   ];
 
   return (
-    <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50/70 p-5">
-      <p className="text-sm font-semibold text-slate-900">Choose how you want to start</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600">
-        Scanning is the fastest path, ISBN lookup is the fallback, and manual entry is always
-        available when metadata is incomplete.
+    <div className="add-book-mode-switcher rounded-[1.6rem] border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4">
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-semibold text-slate-900">Choose how you want to start</p>
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-teal-700">
+          Scanner stays default
+        </p>
+      </div>
+      <p className="mt-1.5 text-sm leading-6 text-slate-600">
+        Pick a starting method below. Each option leads into the same editable form.
       </p>
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+      <div className="mt-3.5 grid gap-2.5 sm:grid-cols-3">
         {buttons.map((button) => (
           <button
             key={button.id}
             type="button"
             onClick={button.onClick}
-            className={`rounded-2xl px-4 py-2 text-sm font-medium transition ${
+            className={`add-book-mode-button rounded-[1.25rem] px-4 py-3 text-left text-sm font-medium transition ${
               currentStage === button.id
-                ? "bg-teal-700 text-white"
-                : "bg-white text-slate-700 hover:bg-slate-100"
+                ? "border-teal-600 bg-teal-700 text-white shadow-[0_14px_32px_rgba(15,118,110,0.2)]"
+                : "border-white/80 bg-white text-slate-700 hover:bg-slate-100"
             }`}
           >
             {button.label}
@@ -926,10 +929,10 @@ function StageSwitcher({
 
 function StageCard({ eyebrow, title, description }) {
   return (
-    <div className="rounded-[1.5rem] border border-sky-100 bg-sky-50/70 p-5">
+    <div className="add-book-stage-card rounded-[1.4rem] border border-sky-100 bg-sky-50/70 p-4 sm:p-5">
       <p className="text-xs font-medium uppercase tracking-[0.25em] text-sky-700">{eyebrow}</p>
-      <h2 className="mt-2 text-xl font-semibold text-slate-900">{title}</h2>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+      <h2 className="mt-1.5 text-lg font-semibold text-slate-900 sm:text-xl">{title}</h2>
+      <p className="mt-1.5 text-sm leading-6 text-slate-600">{description}</p>
     </div>
   );
 }
@@ -967,7 +970,7 @@ function SelectField({ error, label, options, renderOptionLabel = (option) => op
 
 function ListingTypeField({ value, error, onChange }) {
   return (
-    <div className="sm:col-span-2 rounded-[1.5rem] border border-teal-100 bg-teal-50/70 p-5">
+    <div className="sm:col-span-2 rounded-[1.5rem] border border-teal-100 bg-teal-50/70 p-5 sm:p-6">
       <div className="flex flex-col gap-2">
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-teal-700">
           Listing Type
@@ -978,7 +981,7 @@ function ListingTypeField({ value, error, onChange }) {
         </p>
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
         {listingTypeOptions.map((option) => {
           const isActive = value === option.value;
 
@@ -1008,7 +1011,7 @@ function ListingTypeField({ value, error, onChange }) {
         })}
       </div>
 
-      <div className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-sm text-slate-600">
+      <div className="mt-3.5 rounded-2xl bg-white/80 px-4 py-3 text-sm text-slate-600">
         {value === "rent"
           ? "Rent listings ask for rental price and security deposit."
           : value === "sell"
@@ -1041,7 +1044,7 @@ function ImageUrlsField({
   const canAddMore = images.length < MAX_IMAGE_FIELDS;
 
   return (
-    <div className="sm:col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
+    <div className="sm:col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium text-slate-700">Book images</p>
@@ -1059,7 +1062,7 @@ function ImageUrlsField({
         </button>
       </div>
 
-      <div className="mt-5 space-y-4">
+      <div className="mt-4 space-y-3.5">
         {images.map((image, index) => (
           <div
             key={`image-field-${index}`}
@@ -1100,7 +1103,7 @@ function ImageUrlsField({
 function FormSection({ title, description, children }) {
   return (
     <section className="ui-subtle-card p-5 sm:p-6">
-      <div className="mb-5">
+      <div className="mb-4">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">{title}</p>
         <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
       </div>

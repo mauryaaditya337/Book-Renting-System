@@ -155,7 +155,16 @@ export function BookDetailsView({ id }) {
   const hasRejectedRequest = requestStatus === "rejected";
   const hasCompletedRequest = requestStatus === "completed";
   const canRequestAgain = hasRejectedRequest || hasCompletedRequest;
-  const ownerTrustLine = [ownerCollegeName, ownerCurrentDegree, ownerCity].filter(Boolean).join(" • ");
+  const ownerTrustLine = [ownerCollegeName, ownerCurrentDegree, ownerCity].filter(Boolean).join(" - ");
+  const primaryCtaLabel = listingType === "sell" ? "Buy Book" : "Request Book";
+  const stickyPriceLabel = listingType === "sell" ? "One-time price" : "Per day";
+  const stickyPriceValue = priceSummary.approxDailyValue || priceSummary.primaryValue;
+  const detailChips = [
+    book.category,
+    book.condition || "Condition not shared",
+    meetupLocation || book.location,
+    book.distance || book.distanceText || ""
+  ].filter(Boolean);
 
   const handlePreviousImage = () => {
     setActiveImageIndex((current) => (current === 0 ? images.length - 1 : current - 1));
@@ -170,149 +179,228 @@ export function BookDetailsView({ id }) {
     router.push("/login");
   };
 
+  const handleBackNavigation = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push("/books");
+  };
+
   return (
-    <section className="space-y-6">
-      <Link href="/books" className="ui-btn-light w-full rounded-full px-4 py-2 sm:w-auto">
-        Back to books
-      </Link>
+    <section className="book-details-page mx-auto w-full max-w-6xl overflow-x-clip pb-32 lg:pb-10">
+      <div className="mb-4 hidden lg:block">
+        <button
+          type="button"
+          onClick={handleBackNavigation}
+          className="book-details-back-button"
+        >
+          <span aria-hidden="true" className="text-base leading-none">
+            ←
+          </span>
+          <span>Back</span>
+        </button>
+      </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.22fr)_minmax(18.5rem,0.52fr)] lg:gap-6 lg:items-start">
         <article className="ui-surface overflow-hidden p-0">
-          <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
-            <div className="border-b border-slate-200/70 bg-[linear-gradient(160deg,rgba(15,118,110,0.12),rgba(255,255,255,0.72))] p-5 sm:p-6 lg:border-b-0 lg:border-r lg:p-8">
-              <div className="relative">
-                <BookCover
-                  src={activeImage}
-                  title={book.title}
-                  ratioClassName="aspect-[4/5]"
-                  containerClassName="rounded-[2rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.36),rgba(15,23,42,0.08))] shadow-[0_28px_70px_rgba(15,23,42,0.18)]"
-                  imageClassName="object-cover"
-                />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 rounded-b-[2rem] bg-gradient-to-t from-slate-950/20 via-slate-900/8 to-transparent" />
-              </div>
+          <div className="book-details-hero p-4 sm:p-6 lg:p-8">
+            <div className="grid gap-6 lg:grid-cols-[minmax(18rem,0.82fr)_minmax(0,1.18fr)] lg:gap-8 lg:items-start">
+              <div className="min-w-0">
+                <div className="relative mx-auto w-full max-w-sm lg:max-w-none">
+                  <button
+                    type="button"
+                    onClick={handleBackNavigation}
+                    className="book-details-mobile-back-button lg:hidden"
+                    aria-label="Go back"
+                  >
+                    <span aria-hidden="true" className="text-lg leading-none">
+                      ←
+                    </span>
+                  </button>
+                  <BookCover
+                    src={activeImage}
+                    title={book.title}
+                    ratioClassName="aspect-[5/6]"
+                    containerClassName="book-details-cover rounded-[2rem] border-white/70 bg-white/65 shadow-[0_24px_70px_rgba(15,23,42,0.16)]"
+                    imageClassName="object-cover"
+                  />
+                </div>
 
-              {hasMultipleImages ? (
-                <div className="mt-5 space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-slate-600">
-                      Image {activeImageIndex + 1} of {images.length}
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handlePreviousImage}
-                        className="ui-btn-secondary min-h-11 px-4 py-2"
-                      >
-                        Previous
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleNextImage}
-                        className="ui-btn-dark min-h-11 px-4 py-2"
-                      >
-                        Next
-                      </button>
+                {hasMultipleImages ? (
+                  <div className="mt-4 space-y-3 lg:mt-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-slate-600">
+                        Image {activeImageIndex + 1} of {images.length}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handlePreviousImage}
+                          className="ui-btn-secondary min-h-10 px-3 py-2"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleNextImage}
+                          className="ui-btn-dark min-h-10 px-3 py-2"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 lg:grid-cols-4">
+                      {images.map((image, index) => (
+                        <button
+                          key={`${image}-${index}`}
+                          type="button"
+                          onClick={() => setActiveImageIndex(index)}
+                          className={`book-details-thumb min-w-0 overflow-hidden rounded-[1rem] border transition ${
+                            index === activeImageIndex
+                              ? "border-slate-900 shadow-sm"
+                              : "border-white/80 hover:border-slate-300"
+                          }`}
+                        >
+                          <BookCover
+                            src={image}
+                            title={`${book.title} ${index + 1}`}
+                            ratioClassName="aspect-[4/5]"
+                            containerClassName="rounded-[1rem] border-0 bg-white"
+                            imageClassName="object-cover"
+                          />
+                        </button>
+                      ))}
                     </div>
                   </div>
+                ) : null}
+              </div>
 
-                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-                    {images.map((image, index) => (
-                      <button
-                        key={`${image}-${index}`}
-                        type="button"
-                        onClick={() => setActiveImageIndex(index)}
-                        className={`overflow-hidden rounded-[1rem] border transition ${
-                          index === activeImageIndex
-                            ? "border-slate-900 shadow-sm"
-                            : "border-white/80 hover:border-slate-300"
-                        }`}
+              <div className="book-details-main-copy min-w-0">
+                <div className="flex flex-wrap items-start justify-between gap-3 lg:gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-700 shadow-sm">
+                        {toTitleCase(listingType)} listing
+                      </span>
+                      <span
+                        className={`request-status-pill inline-flex w-fit rounded-full border px-3 py-1.5 text-xs font-semibold ${getAvailabilityTone(
+                          availabilityStatus
+                        )}`}
                       >
-                        <BookCover
-                          src={image}
-                          title={`${book.title} ${index + 1}`}
-                          ratioClassName="aspect-[4/5]"
-                          containerClassName="rounded-[1rem] border-0 bg-white"
-                          imageClassName="object-cover"
-                        />
-                      </button>
+                        {toTitleCase(availabilityStatus)}
+                      </span>
+                    </div>
+
+                    <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl lg:max-w-[12ch] lg:text-[2.8rem] lg:leading-[1.05]">
+                      {book.title}
+                    </h1>
+                    <p className="mt-2 text-base text-slate-600 sm:text-lg lg:text-[1.05rem]">by {book.author}</p>
+                  </div>
+
+                  <SavedBookButton
+                    book={book}
+                    showLabel
+                    className="w-full justify-center sm:w-auto lg:self-start"
+                  />
+                </div>
+
+                {detailChips.length ? (
+                  <div className="mt-5 flex flex-wrap gap-2 lg:mt-6">
+                    {detailChips.map((chip) => (
+                      <span key={chip} className="ui-trust-chip max-w-full truncate">
+                        {chip}
+                      </span>
                     ))}
                   </div>
-                </div>
-              ) : null}
-            </div>
+                ) : null}
 
-            <div className="p-5 sm:p-6 lg:p-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-teal-700">
-                      {book.category}
-                    </p>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
-                      {toTitleCase(listingType)}
-                    </span>
+                <div className="mt-6 grid grid-cols-2 gap-3 lg:mt-7 lg:grid-cols-2 lg:gap-4">
+                  <HeroMeta label="Condition" value={book.condition || "Not provided"} />
+                  <HeroMeta label="Location" value={book.location || "Not provided"} />
+                  <HeroMeta label="Category" value={book.category || "Not provided"} />
+                  <HeroMeta label="Owner" value={ownerFullName} />
+                  {book.isbn ? <HeroMeta label="ISBN" value={book.isbn} /> : null}
+                  {book.distance || book.distanceText ? (
+                    <HeroMeta label="Distance" value={book.distance || book.distanceText} />
+                  ) : null}
+                </div>
+
+                <div className="book-details-price-panel mt-6 rounded-[1.6rem] border border-slate-200/80 bg-white/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)] sm:p-5 lg:hidden">
+                  <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        {priceSummary.primaryLabel}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                        {priceSummary.primaryValue}
+                      </p>
+                    </div>
+
+                    {!listingType || listingType !== "sell" ? (
+                      <div className="rounded-[1.2rem] border border-slate-200/80 bg-slate-50/90 px-4 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Security deposit
+                        </p>
+                        <p className="mt-1 text-base font-semibold text-slate-900">
+                          {formatPrice(book.securityDeposit)}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
-                  <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl">
-                    {book.title}
-                  </h1>
-                  <p className="mt-3 text-base text-slate-600 sm:text-lg">by {book.author}</p>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {priceSummary.approxDailyLabel ? (
+                      <InfoBlock label={priceSummary.approxDailyLabel} value={priceSummary.approxDailyValue} />
+                    ) : null}
+                    {priceSummary.secondaryLabel ? (
+                      <InfoBlock label={priceSummary.secondaryLabel} value={priceSummary.secondaryValue} />
+                    ) : (
+                      <InfoBlock label="Availability" value={toTitleCase(availabilityStatus)} />
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                  <SavedBookButton book={book} showLabel className="w-full justify-center sm:w-auto" />
-                  <span
-                    className={`request-status-pill inline-flex w-fit rounded-full border px-4 py-2 text-sm font-semibold ${getAvailabilityTone(
-                      availabilityStatus
-                    )}`}
-                  >
-                    {toTitleCase(availabilityStatus)}
-                  </span>
+                <div className="ui-trust-band mt-6 lg:hidden">
+                  <p className="ui-trust-label">Listing snapshot</p>
+                  <p className="ui-trust-copy">
+                    Listed by {ownerFullName}
+                    {ownerTrustLine ? ` - ${ownerTrustLine}` : ""}. Review the details here, then use the
+                    request flow below when you are ready.
+                  </p>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <HeroMeta label="Condition" value={book.condition || "Not provided"} />
-                <HeroMeta label="ISBN" value={book.isbn || "Not provided"} />
-                <HeroMeta label="Location" value={book.location || "Not provided"} />
-                <HeroMeta label="Owner" value={ownerFullName} />
-              </div>
-
-              <div className="ui-trust-band mt-6">
-                <div className="flex flex-wrap gap-2">
-                  <span className="ui-trust-chip">{toTitleCase(listingType)} listing</span>
-                  <span className="ui-trust-chip">{book.condition || "Condition not shared"}</span>
-                  <span className="ui-trust-chip">{toTitleCase(availabilityStatus)}</span>
-                </div>
-                <p className="ui-trust-copy">
-                  Listed by {ownerFullName}
-                  {ownerTrustLine ? ` • ${ownerTrustLine}` : ""}. Use the request flow first so the
-                  owner can review availability before handoff.
-                </p>
-              </div>
-
-              <div className="mt-6 rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(155deg,rgba(15,118,110,0.1),rgba(255,255,255,0.96))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="hidden border-t border-slate-200/70 bg-white/60 lg:block">
+            <div className="book-details-summary-band p-8">
+              <div className="book-details-price-panel rounded-[1.7rem] border border-slate-200/80 bg-white/72 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
+                <div className="flex items-end justify-between gap-6">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                       {priceSummary.primaryLabel}
                     </p>
-                    <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 sm:text-[2.3rem]">
+                    <p className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-900">
                       {priceSummary.primaryValue}
                     </p>
                   </div>
+
                   {!listingType || listingType !== "sell" ? (
-                    <div className="rounded-[1.25rem] border border-white/90 bg-white/90 px-4 py-3 shadow-sm">
+                    <div className="rounded-[1.2rem] border border-slate-200/80 bg-slate-50/90 px-4 py-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Security deposit
                       </p>
-                      <p className="mt-1 text-lg font-semibold text-slate-900">
+                      <p className="mt-1 text-base font-semibold text-slate-900">
                         {formatPrice(book.securityDeposit)}
                       </p>
                     </div>
                   ) : null}
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="mt-5 grid gap-3 xl:grid-cols-2">
                   {priceSummary.approxDailyLabel ? (
                     <InfoBlock label={priceSummary.approxDailyLabel} value={priceSummary.approxDailyValue} />
                   ) : null}
@@ -324,93 +412,138 @@ export function BookDetailsView({ id }) {
                 </div>
               </div>
 
-              <div className="mt-6 rounded-[1.75rem] border border-slate-200/80 bg-slate-50/86 p-5 sm:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                      Next Step
-                    </p>
-                    <h2 className="mt-2 text-xl font-semibold text-slate-900">Request and reserve this listing</h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Review the pricing and location, then continue into the request flow when you are ready.
-                    </p>
-                  </div>
-                  <div className="flex w-full flex-col gap-3 sm:w-auto sm:min-w-[15rem]">
-                    <RequestActionArea
-                      isAuthenticated={isAuthenticated}
-                      isLoadingOwnRequest={isLoadingOwnRequest}
-                      isRequestAvailable={isRequestAvailable}
-                      bookId={book.id}
-                      listingType={listingType}
-                      handleLoginRedirect={handleLoginRedirect}
-                      hasPendingRequest={hasPendingRequest}
-                      hasRejectedRequest={hasRejectedRequest}
-                      hasApprovedRequest={hasApprovedRequest}
-                      hasActiveRequest={hasActiveRequest}
-                      hasReturnPendingRequest={hasReturnPendingRequest}
-                      hasCompletedRequest={hasCompletedRequest}
-                      canRequestAgain={canRequestAgain}
-                      ownRentalRequest={ownRentalRequest}
-                    />
-                  </div>
+              <div className="ui-trust-band h-full">
+                <p className="ui-trust-label">Listing snapshot</p>
+                <p className="ui-trust-copy">
+                  Listed by {ownerFullName}
+                  {ownerTrustLine ? ` - ${ownerTrustLine}` : ""}. Review the details here, then use the
+                  request flow below when you are ready.
+                </p>
+                <div className="mt-5 grid gap-3 xl:grid-cols-2">
+                  <InfoBlock label="Listing type" value={toTitleCase(listingType)} />
+                  <InfoBlock label="Location" value={book.location || "Not provided"} />
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 border-t border-slate-200/70 bg-white/55 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-5 lg:p-8">
+            <div className="ui-card p-5 sm:p-6 lg:row-span-2">
+              <p className="text-sm font-medium uppercase tracking-[0.28em] text-teal-700">Description</p>
+              <p className="mt-4 text-sm leading-7 text-slate-700">
+                {book.description || "No description shared for this listing yet."}
+              </p>
+            </div>
+
+            <div className="ui-card p-5 sm:p-6">
+              <p className="text-sm font-medium uppercase tracking-[0.28em] text-teal-700">Owner</p>
+              <div className="mt-4 space-y-3">
+                <InfoBlock label="Owner name" value={ownerFullName} />
+                <InfoBlock label="College name" value={ownerCollegeName} />
+                {ownerCurrentDegree ? <InfoBlock label="Current degree" value={ownerCurrentDegree} /> : null}
+                {ownerBio ? <InfoBlock label="Bio" value={ownerBio} /> : null}
+              </div>
+            </div>
+
+            <div className="ui-card p-5 sm:p-6">
+              <p className="text-sm font-medium uppercase tracking-[0.28em] text-teal-700">Exchange details</p>
+              <div className="mt-4 space-y-3">
+                <InfoBlock label="Listing type" value={toTitleCase(listingType)} />
+                <InfoBlock label="City / area" value={book.location || "Not provided"} />
+                {ownerCity ? <InfoBlock label="Owner city" value={ownerCity} /> : null}
+                {meetupLocation ? <InfoBlock label="Meetup point" value={meetupLocation} /> : null}
+                {depositNote ? <InfoBlock label="Deposit note" value={depositNote} /> : null}
+              </div>
+            </div>
+
+            <div className="ui-card p-5 sm:p-6 lg:col-span-2">
+              <p className="text-sm font-medium uppercase tracking-[0.28em] text-teal-700">Request details</p>
+              <div className="mt-4">
+                <RequestActionArea
+                  isAuthenticated={isAuthenticated}
+                  isLoadingOwnRequest={isLoadingOwnRequest}
+                  isRequestAvailable={isRequestAvailable}
+                  bookId={book.id}
+                  listingType={listingType}
+                  handleLoginRedirect={handleLoginRedirect}
+                  hasPendingRequest={hasPendingRequest}
+                  hasRejectedRequest={hasRejectedRequest}
+                  hasApprovedRequest={hasApprovedRequest}
+                  hasActiveRequest={hasActiveRequest}
+                  hasReturnPendingRequest={hasReturnPendingRequest}
+                  hasCompletedRequest={hasCompletedRequest}
+                  canRequestAgain={canRequestAgain}
+                  ownRentalRequest={ownRentalRequest}
+                  defaultActionLabel={primaryCtaLabel}
+                />
               </div>
             </div>
           </div>
         </article>
 
-        <aside className="space-y-4">
-          <div className="ui-card p-5 sm:p-6">
-            <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
-              Owner & Listing
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-slate-900">Trust and listing context</h2>
-            <div className="ui-trust-card mt-5">
-              <p className="ui-trust-label">Why this matters</p>
-              <p className="ui-trust-copy">
-                Ownership, pickup details, and request approval all stay visible here so you can
-                decide with more confidence before sending a request.
-              </p>
-            </div>
-            <div className="mt-5 space-y-3">
-              <InfoBlock label="Owner name" value={ownerFullName} />
-              <InfoBlock label="College name" value={ownerCollegeName} />
-              {ownerCurrentDegree ? <InfoBlock label="Current degree" value={ownerCurrentDegree} /> : null}
-              <InfoBlock label="Listing type" value={toTitleCase(listingType)} />
-            </div>
-            {ownerBio ? (
-              <div className="mt-4 rounded-[1.4rem] border border-slate-200/80 bg-slate-50/88 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Bio</p>
-                <p className="mt-2 text-sm leading-7 text-slate-700">{ownerBio}</p>
+        <aside className="hidden lg:block">
+          <div className="book-details-sticky-bar">
+            <div className="space-y-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Ready to continue
+                </p>
+                <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
+                  {primaryCtaLabel}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {listingType === "sell"
+                    ? "A clear purchase handoff starts with the same request flow already in place."
+                    : "Keep the price visible while you review details, owner info, and pickup context."}
+                </p>
               </div>
-            ) : null}
-          </div>
 
-          <div className="ui-card p-5 sm:p-6">
-            <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
-              Location & Exchange
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-slate-900">Pickup clarity</h2>
-            <div className="mt-5 space-y-3">
-              <InfoBlock label="City / area" value={book.location || "Not provided"} />
-              {ownerCity ? <InfoBlock label="Owner city" value={ownerCity} /> : null}
-              {meetupLocation ? <InfoBlock label="Meetup point" value={meetupLocation} /> : null}
-              {depositNote ? <InfoBlock label="Deposit note" value={depositNote} /> : null}
+              <div className="book-details-side-summary">
+                <InfoBlock label={stickyPriceLabel} value={stickyPriceValue} />
+                <InfoBlock label="Owner" value={ownerFullName} />
+              </div>
             </div>
-          </div>
 
-          <div className="ui-card p-5 sm:p-6">
-            <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
-              Description
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-slate-900">What to expect</h2>
-            <div className="mt-5 rounded-[1.5rem] border border-slate-200/80 bg-slate-50/86 p-4 sm:p-5">
-              <p className="text-sm leading-7 text-slate-700">
-                {book.description || "No description shared for this listing yet."}
-              </p>
+            <div className="book-details-side-cta w-full">
+              <ActionButton
+                isAuthenticated={isAuthenticated}
+                handleLoginRedirect={handleLoginRedirect}
+                href={`/books/${book.id}/request`}
+                disabled={!isRequestAvailable || isLoadingOwnRequest}
+              >
+                {isLoadingOwnRequest
+                  ? "Checking request status..."
+                  : isRequestAvailable
+                    ? primaryCtaLabel
+                    : "Currently Unavailable"}
+              </ActionButton>
             </div>
           </div>
         </aside>
+      </div>
+
+      <div className="book-details-mobile-bar lg:hidden">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            {stickyPriceLabel}
+          </p>
+          <p className="mt-1 truncate text-lg font-semibold text-slate-900">{stickyPriceValue}</p>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <ActionButton
+            isAuthenticated={isAuthenticated}
+            handleLoginRedirect={handleLoginRedirect}
+            href={`/books/${book.id}/request`}
+            disabled={!isRequestAvailable || isLoadingOwnRequest}
+          >
+            {isLoadingOwnRequest
+              ? "Checking..."
+              : isRequestAvailable
+                ? primaryCtaLabel
+                : "Unavailable"}
+          </ActionButton>
+        </div>
       </div>
     </section>
   );
@@ -430,11 +563,12 @@ function RequestActionArea({
   hasReturnPendingRequest,
   hasCompletedRequest,
   canRequestAgain,
-  ownRentalRequest
+  ownRentalRequest,
+  defaultActionLabel
 }) {
   if (hasPendingRequest) {
     return (
-      <>
+      <div className="space-y-3">
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-700">
           Pending Approval
         </div>
@@ -447,13 +581,13 @@ function RequestActionArea({
         <p className="text-sm leading-6 text-slate-600">
           Your request has been sent. The owner will review it before taking the next step.
         </p>
-      </>
+      </div>
     );
   }
 
   if (hasRejectedRequest) {
     return (
-      <>
+      <div className="space-y-3">
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm font-semibold text-rose-700">
           Request Rejected
         </div>
@@ -470,9 +604,6 @@ function RequestActionArea({
             available again.
           </p>
         </div>
-        <p className="text-sm leading-6 text-slate-600">
-          This request was rejected. You can send a fresh request if this book is available again.
-        </p>
         <ActionButton
           isAuthenticated={isAuthenticated}
           handleLoginRedirect={handleLoginRedirect}
@@ -481,13 +612,13 @@ function RequestActionArea({
         >
           {isLoadingOwnRequest ? "Checking request status..." : isRequestAvailable ? "Request Again" : "Currently Unavailable"}
         </ActionButton>
-      </>
+      </div>
     );
   }
 
   if (hasApprovedRequest) {
     return (
-      <>
+      <div className="space-y-3">
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-700">
           {listingType === "sell" ? "Purchase Request Approved" : "Approved and Reserved"}
         </div>
@@ -504,13 +635,13 @@ function RequestActionArea({
             ? "Your request has been approved. The seller can now contact you from their incoming requests screen."
             : "Your request has been approved and this book is now reserved for you. Start the rent from My Requests when you pick it up."}
         </p>
-      </>
+      </div>
     );
   }
 
   if (hasActiveRequest) {
     return (
-      <>
+      <div className="space-y-3">
         <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-center text-sm font-semibold text-sky-700">
           Rental Active
         </div>
@@ -523,13 +654,13 @@ function RequestActionArea({
         <p className="text-sm leading-6 text-slate-600">
           This rental is currently active. You can coordinate with the owner and return it from My Requests when you are done.
         </p>
-      </>
+      </div>
     );
   }
 
   if (hasReturnPendingRequest) {
     return (
-      <>
+      <div className="space-y-3">
         <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-center text-sm font-semibold text-indigo-700">
           Return Pending
         </div>
@@ -542,13 +673,13 @@ function RequestActionArea({
         <p className="text-sm leading-6 text-slate-600">
           You have asked to return this book. The owner still needs to confirm the return before the rental is marked completed.
         </p>
-      </>
+      </div>
     );
   }
 
   if (hasCompletedRequest) {
     return (
-      <>
+      <div className="space-y-3">
         <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-center text-sm font-semibold text-teal-700">
           Rental Completed
         </div>
@@ -571,19 +702,19 @@ function RequestActionArea({
             {isLoadingOwnRequest ? "Checking request status..." : isRequestAvailable ? "Request Again" : "Currently Unavailable"}
           </ActionButton>
         ) : null}
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="space-y-3">
       <ActionButton
         isAuthenticated={isAuthenticated}
         handleLoginRedirect={handleLoginRedirect}
         href={`/books/${bookId}/request`}
         disabled={!isRequestAvailable || isLoadingOwnRequest}
       >
-        {isLoadingOwnRequest ? "Checking request status..." : isRequestAvailable ? "Request This Book" : "Currently Unavailable"}
+        {isLoadingOwnRequest ? "Checking request status..." : isRequestAvailable ? defaultActionLabel : "Currently Unavailable"}
       </ActionButton>
       <div className="ui-trust-card">
         <p className="ui-trust-label">How the flow works</p>
@@ -599,7 +730,7 @@ function RequestActionArea({
             : "Choose rental dates and submit your request first. The owner will review it before anything else happens."
           : "Log in first and you can continue directly into the request form."}
       </p>
-    </>
+    </div>
   );
 }
 
@@ -630,99 +761,77 @@ function ActionButton({ isAuthenticated, handleLoginRedirect, href, disabled, ch
 
 function HeroMeta({ label, value }) {
   return (
-    <div className="rounded-[1.25rem] border border-slate-200/80 bg-white/86 px-4 py-3 shadow-sm">
+    <div className="min-w-0 rounded-[1.25rem] border border-slate-200/80 bg-white/86 px-4 py-3 shadow-sm">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-medium text-slate-800">{value}</p>
+      <p className="mt-1 break-words text-sm font-medium text-slate-800">{value}</p>
     </div>
   );
 }
 
 function InfoBlock({ label, value }) {
   return (
-    <div className="rounded-[1.35rem] border border-slate-200/80 bg-slate-50/90 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+    <div className="min-w-0 rounded-[1.35rem] border border-slate-200/80 bg-slate-50/90 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-800">{value}</p>
+      <p className="mt-2 break-words text-sm leading-6 text-slate-800">{value}</p>
     </div>
   );
 }
 
 function BookDetailsLoadingState() {
   return (
-    <section className="space-y-6">
-      <div className="ui-skeleton-button w-36" />
-
-      <div className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
-        <div className="ui-surface overflow-hidden p-0">
-          <div className="grid gap-0 lg:grid-cols-[0.92fr_1.08fr]">
-            <div className="border-b border-slate-200/70 p-5 sm:p-6 lg:border-b-0 lg:border-r lg:p-8">
-              <div className="ui-skeleton h-[28rem] rounded-[2rem]" />
-              <div className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-5">
+    <section className="mx-auto w-full max-w-6xl overflow-x-clip pb-32 lg:pb-10">
+      <div className="ui-surface overflow-hidden p-0">
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1fr)]">
+            <div>
+              <div className="ui-skeleton h-[24rem] rounded-[2rem] sm:h-[30rem]" />
+              <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-5">
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div key={index} className="ui-skeleton h-20 rounded-[1rem]" />
                 ))}
               </div>
             </div>
 
-            <div className="p-5 sm:p-6 lg:p-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1 space-y-3">
-                  <div className="flex gap-2">
-                    <div className="ui-skeleton-pill w-24" />
-                    <div className="ui-skeleton-pill w-20" />
-                  </div>
-                  <div className="ui-skeleton-title w-4/5" />
-                  <div className="ui-skeleton-line w-2/3" />
-                </div>
-                <div className="ui-skeleton-pill w-28" />
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <div className="ui-skeleton-pill w-24" />
+                <div className="ui-skeleton-pill w-24" />
               </div>
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {Array.from({ length: 4 }).map((_, index) => (
+              <div className="ui-skeleton-title w-4/5" />
+              <div className="ui-skeleton-line w-2/3" />
+              <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 6 }).map((_, index) => (
                   <div key={index} className="ui-skeleton-panel space-y-2">
                     <div className="ui-skeleton-line w-20" />
-                    <div className="ui-skeleton-line w-28" />
+                    <div className="ui-skeleton-line w-full" />
                   </div>
                 ))}
               </div>
-
-              <div className="ui-skeleton-panel mt-6 space-y-4 p-5 sm:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="ui-skeleton-panel space-y-4 p-5 sm:p-6">
+                <div className="flex flex-wrap items-end justify-between gap-4">
                   <div className="space-y-2">
                     <div className="ui-skeleton-line w-24" />
-                    <div className="ui-skeleton-title w-36" />
+                    <div className="ui-skeleton-title w-40" />
                   </div>
-                  <div className="ui-skeleton h-20 w-full rounded-[1.25rem] sm:w-40" />
+                  <div className="ui-skeleton h-16 w-36 rounded-[1.25rem]" />
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="ui-skeleton h-20 rounded-[1.2rem]" />
                   <div className="ui-skeleton h-20 rounded-[1.2rem]" />
                 </div>
               </div>
-
-              <div className="ui-skeleton-panel mt-6 space-y-4 p-5 sm:p-6">
-                <div className="space-y-2">
-                  <div className="ui-skeleton-line w-24" />
-                  <div className="ui-skeleton-title w-56" />
-                  <div className="ui-skeleton-line w-full" />
-                </div>
-                <div className="space-y-3">
-                  <div className="ui-skeleton-button w-full" />
-                  <div className="ui-skeleton-line w-full" />
-                </div>
-              </div>
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, index) => (
+        <div className="grid gap-4 border-t border-slate-200/70 bg-white/55 p-4 sm:p-6 lg:grid-cols-2 lg:p-8">
+          {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="ui-skeleton-card space-y-4">
-              <div className="ui-skeleton-line w-24" />
-              <div className="ui-skeleton-title w-2/3" />
+              <div className="ui-skeleton-line w-28" />
               <div className="space-y-3">
-                {Array.from({ length: 3 }).map((__, rowIndex) => (
-                  <div key={rowIndex} className="ui-skeleton h-20 rounded-[1.3rem]" />
-                ))}
+                <div className="ui-skeleton-line w-full" />
+                <div className="ui-skeleton-line w-11/12" />
+                <div className="ui-skeleton-line w-4/5" />
               </div>
             </div>
           ))}

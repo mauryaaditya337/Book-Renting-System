@@ -190,6 +190,9 @@ export function BooksBrowse({ initialView = "all" }) {
   const visibleCount = displayedBooks.length;
   const shouldShowLoading = isSavedView ? !hasHydrated : isLoading;
   const shouldShowError = !isSavedView && Boolean(errorMessage);
+  const shouldShowDefaultSummary = isSavedView;
+  const shouldShowResultStrip =
+    hasActiveFilters || Boolean(appliedFilters.search.trim()) || isSavedView;
   const pageLabel = isSavedView
     ? "Saved on this device"
     : pagination.totalPages > 1
@@ -217,36 +220,38 @@ export function BooksBrowse({ initialView = "all" }) {
   };
 
   return (
-    <section className="space-y-6">
-      <div className="ui-surface p-6 sm:p-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="space-y-4 sm:space-y-6">
+      <div className="ui-surface p-3.5 sm:p-5 lg:p-6">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">Browse Books</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900 sm:text-4xl">
+            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-teal-700">Browse Books</p>
+            <h1 className="mt-0.5 text-[1.7rem] font-semibold text-slate-900 sm:mt-1 sm:text-[2rem]">
               {isSavedView ? "Revisit your saved books" : "Find books from the community"}
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-              {isSavedView
-                ? "Saved books are stored on this device only, so you can quickly revisit listings you want to compare or request later."
-                : "Search by title or author, then narrow the catalog with the category and location filters already built into the flow."}
-            </p>
+            {isSavedView ? (
+              <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-600 sm:leading-6">
+                Saved books stay on this device so you can quickly revisit listings later.
+              </p>
+            ) : null}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-full bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-100">
-              {resultLabel}
-            </div>
-            <Link href="/request-book" className="ui-btn-secondary w-full sm:inline-flex sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {shouldShowDefaultSummary ? (
+              <div className="hidden rounded-full bg-slate-900 px-3 py-2 text-sm font-medium text-slate-100 sm:inline-flex">
+                {resultLabel}
+              </div>
+            ) : null}
+            <Link href="/request-book" className="ui-btn-secondary w-full sm:inline-flex sm:w-auto sm:px-4 sm:py-2.5">
               Request a Book
             </Link>
           </div>
         </div>
 
-        <form className="mt-7 space-y-4" onSubmit={handleApplyFilters}>
-          <div className="flex flex-wrap gap-2">
+        <form className="mt-3.5 space-y-3 sm:space-y-4" onSubmit={handleApplyFilters}>
+          <div className="flex flex-wrap gap-2.5">
             <ViewToggleButton
               isActive={!isSavedView}
               label="All books"
-              detail={getResultLabel(pagination.totalBooks)}
+              detail={shouldShowDefaultSummary ? getResultLabel(pagination.totalBooks) : "Browse"}
               onClick={() => switchView("all")}
             />
             <ViewToggleButton
@@ -261,7 +266,7 @@ export function BooksBrowse({ initialView = "all" }) {
             />
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="book-browse-search-row flex items-center gap-2 sm:gap-3">
             <label className="relative block flex-1">
               <span className="sr-only">Search books</span>
               <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -270,12 +275,12 @@ export function BooksBrowse({ initialView = "all" }) {
                 value={draftFilters.search}
                 onChange={handleFilterChange}
                 placeholder="Search by title or author name"
-                className="ui-input min-h-14 rounded-[1.6rem] pl-12 pr-14 text-base"
+                  className="ui-input min-h-12 rounded-[1.25rem] border-white/80 bg-white/92 pl-12 pr-12 text-sm shadow-[0_8px_22px_rgba(15,23,42,0.04)] sm:min-h-13 sm:text-base"
               />
               <button
                 type="submit"
                 aria-label="Search books"
-                className="absolute right-2 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-2xl bg-slate-900 text-white transition hover:bg-slate-700"
+                className="absolute right-1.5 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[1rem] bg-slate-900 text-white transition hover:bg-slate-700 sm:h-10 sm:w-10"
               >
                 <ArrowIcon className="h-4 w-4" />
               </button>
@@ -285,7 +290,7 @@ export function BooksBrowse({ initialView = "all" }) {
               type="button"
               onClick={() => setIsFiltersOpen((current) => !current)}
               aria-expanded={isFiltersOpen}
-              className={`relative inline-flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-[1.3rem] border px-4 text-sm font-semibold transition sm:w-auto ${
+              className={`relative inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-[1.15rem] border px-3.5 text-sm font-semibold transition ${
                 isFiltersOpen || activeFilterCount > 0
                   ? "border-teal-200 bg-teal-50 text-teal-800"
                   : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -301,15 +306,15 @@ export function BooksBrowse({ initialView = "all" }) {
             </button>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm leading-6 text-slate-600">
+          <div className="flex min-h-4 items-center justify-between gap-2">
+            <p className="hidden text-sm leading-6 text-slate-600 sm:block">
               {isSavedView
-                ? "Saved view filters your locally saved books by title, author, category, and location."
-                : "Search helps with titles and authors. Use filters to narrow by category or location."}
+                ? "Search and filter your saved books."
+                : "Search first, then narrow by category or location if needed."}
             </p>
             {hasPendingChanges ? (
               <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
-                Search changes not applied yet
+                Pending changes
               </span>
             ) : null}
           </div>
@@ -374,27 +379,24 @@ export function BooksBrowse({ initialView = "all" }) {
             </div>
           </div>
 
-          {hasActiveFilters ? (
-            <div className="ui-results-panel">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">
-                    Active view
-                  </p>
-                  <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">
-                    {getResultsHeading(appliedFilters, totalResults, isSavedView)}
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    {isSavedView
-                      ? `${visibleCount} saved book${visibleCount === 1 ? "" : "s"} match the filters on this device.`
-                      : `${visibleCount} shown on this page. Adjust search or filters any time without changing the current browse flow.`}
-                  </p>
-                </div>
-                <button type="button" onClick={handleResetFilters} className="ui-btn-secondary">
-                  Clear all filters
-                </button>
+          {shouldShowResultStrip ? (
+            <div className="book-browse-strip">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-900">
+                  {hasActiveFilters || appliedFilters.search.trim()
+                    ? getResultsHeading(appliedFilters, totalResults, isSavedView)
+                    : isSavedView
+                      ? resultLabel
+                      : `${visibleCount} shown`}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {isSavedView
+                    ? `${visibleCount} visible in saved view`
+                    : `${visibleCount} shown${pagination.totalPages > 1 ? ` • ${pageLabel}` : ""}`}
+                </p>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
+
+              <div className="flex flex-wrap items-center gap-2">
                 {activeFilters.map((filter) => (
                   <ActivePill
                     key={filter.key}
@@ -402,6 +404,15 @@ export function BooksBrowse({ initialView = "all" }) {
                     onClear={() => clearSingleFilter(filter.key)}
                   />
                 ))}
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-50"
+                  >
+                    Clear all
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -421,37 +432,15 @@ export function BooksBrowse({ initialView = "all" }) {
         />
       ) : (
         <>
-          <div className="ui-results-panel">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal-700">
-                  Results
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-slate-900">
-                  {hasActiveFilters
-                    ? getResultsHeading(appliedFilters, totalResults, isSavedView)
-                    : isSavedView
-                      ? "Saved books ready to revisit"
-                      : "Explore the latest matching listings"}
-                </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                  {isSavedView
-                    ? "This view is powered entirely by books you saved in this browser, so it is useful for shortlists and later comparison."
-                    : hasActiveFilters
-                      ? "These listings match the filters currently applied above."
-                      : "Browse the current catalog, then narrow the view with search, category, or location when you need to."}
-                </p>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-3">
-                <ResultsStat label={isSavedView ? "Saved matches" : "Total matches"} value={String(totalResults)} />
-                <ResultsStat label="Shown now" value={String(visibleCount)} />
-                <ResultsStat label="Browse state" value={pageLabel} />
-              </div>
+          {shouldShowResultStrip ? (
+            <div className="book-browse-results-meta">
+              <span>{isSavedView ? "Saved view" : "Results"}</span>
+              <span>{resultLabel}</span>
+              <span>{pageLabel}</span>
             </div>
-          </div>
+          ) : null}
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="book-browse-results grid gap-3 lg:gap-4">
             {displayedBooks.map((book) => (
               <BookCard key={book.id} book={book} />
             ))}
@@ -500,14 +489,14 @@ function ViewToggleButton({ isActive, label, detail, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex min-h-12 items-center gap-3 rounded-[1.3rem] border px-4 py-3 text-left transition ${
+      className={`inline-flex min-h-11 items-center gap-2 rounded-[1.1rem] border px-3 py-2.5 text-left transition ${
         isActive
           ? "border-slate-900 bg-slate-900 text-white shadow-sm"
           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
       }`}
     >
       <span className="text-sm font-semibold">{label}</span>
-      <span className={`text-xs ${isActive ? "text-slate-300" : "text-slate-500"}`}>{detail}</span>
+      <span className={`hidden text-xs sm:inline ${isActive ? "text-slate-300" : "text-slate-500"}`}>{detail}</span>
     </button>
   );
 }
@@ -545,42 +534,41 @@ function QuickFilterGroup({ title, subtitle, options, activeValue, onSelect }) {
   );
 }
 
-function ResultsStat({ label, value }) {
-  return (
-    <div className="rounded-[1.3rem] border border-slate-200/80 bg-white/84 px-4 py-3 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-1 text-base font-semibold text-slate-900">{value}</p>
-    </div>
-  );
-}
-
 function LoadingState() {
   return (
-    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+    <div className="book-browse-results grid gap-3 lg:gap-4">
       {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="ui-skeleton-card">
-          <div className="ui-skeleton h-56 rounded-[1.7rem]" />
-          <div className="mt-5 space-y-3">
-            <div className="ui-skeleton-line w-24" />
-            <div className="ui-skeleton-title w-4/5" />
-            <div className="ui-skeleton-line w-2/3" />
-          </div>
-          <div className="ui-skeleton-panel mt-5 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-2">
-                <div className="ui-skeleton-line w-20" />
-                <div className="ui-skeleton-line w-28" />
+        <div key={index} className="ui-skeleton-card p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+            <div className="ui-skeleton h-36 w-full rounded-[1.2rem] sm:h-36 sm:w-28" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="ui-skeleton-line w-20" />
+                  <div className="ui-skeleton-title w-4/5" />
+                  <div className="ui-skeleton-line w-2/3" />
+                </div>
+                <div className="ui-skeleton h-14 w-28 rounded-[1rem]" />
               </div>
-              <div className="ui-skeleton h-12 w-20 rounded-2xl" />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <div className="ui-skeleton-pill w-24" />
+                <div className="ui-skeleton-pill w-28" />
+                <div className="ui-skeleton-pill w-20" />
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                <div className="ui-skeleton-panel space-y-2">
+                  <div className="ui-skeleton-line w-24" />
+                  <div className="ui-skeleton-line w-full" />
+                </div>
+                <div className="ui-skeleton-panel space-y-2">
+                  <div className="ui-skeleton-line w-20" />
+                  <div className="ui-skeleton-line w-24" />
+                </div>
+              </div>
+              <div className="mt-3 border-t border-slate-200/80 pt-3">
+                <div className="ui-skeleton-line w-full" />
+              </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="ui-skeleton h-16 rounded-[1.1rem]" />
-              <div className="ui-skeleton h-16 rounded-[1.1rem]" />
-            </div>
-          </div>
-          <div className="mt-5 flex items-center justify-between border-t border-slate-200/80 pt-4">
-            <div className="ui-skeleton-line w-24" />
-            <div className="ui-skeleton-line w-12" />
           </div>
         </div>
       ))}

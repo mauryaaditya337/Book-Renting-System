@@ -10,110 +10,113 @@ export function BookCard({ book }) {
   const availabilityStatus = book.availabilityStatus || "available";
   const listingTypeLabel = toTitleCase(book.listingType || "rent");
   const conditionLabel = book.condition || "Condition not shared";
+  const ownerName = book.owner?.fullName || book.owner?.name || "";
+  const metadata = [
+    `${listingTypeLabel} listing`,
+    conditionLabel,
+    book.category,
+    book.location,
+    book.distance || book.distanceText || ""
+  ].filter(Boolean);
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-[2.15rem] border border-white/70 bg-white/90 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.1)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_30px_90px_rgba(15,23,42,0.16)] sm:p-5">
-      <div className="absolute right-4 top-4 z-10 sm:right-5 sm:top-5">
+    <article className="book-catalog-card group relative overflow-hidden rounded-[1.7rem] border border-white/70 bg-white/94 p-3 shadow-[0_14px_40px_rgba(15,23,42,0.08)] transition duration-300 hover:border-slate-200 hover:shadow-[0_18px_48px_rgba(15,23,42,0.1)] sm:p-4">
+      <div className="absolute right-3 top-3 z-10 sm:right-4 sm:top-4">
         <SavedBookButton book={book} size="compact" />
       </div>
 
       <Link
         href={`/books/${book.id}`}
-        className="flex h-full flex-col focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-100"
+        className="book-catalog-link flex h-full flex-col gap-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 sm:flex-row sm:items-start sm:gap-4"
       >
-        <div className="relative">
-        <BookCover
-          src={getPrimaryBookImage(book)}
-          title={book.title}
-          containerClassName="aspect-[5/6] rounded-[1.85rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.2),rgba(15,23,42,0.08))] shadow-[0_26px_60px_rgba(15,23,42,0.14)]"
-          imageClassName="transition duration-500 group-hover:scale-[1.03]"
-        />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 rounded-b-[1.85rem] bg-gradient-to-t from-slate-950/22 via-slate-900/8 to-transparent" />
-        <span
-          className={`absolute left-3 top-3 inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] backdrop-blur ${getAvailabilityTone(
-            availabilityStatus
-          )}`}
-        >
-          {toTitleCase(availabilityStatus)}
-        </span>
+        <div className="relative mx-auto w-full max-w-[7.5rem] shrink-0 sm:mx-0 sm:w-[6.5rem] md:w-[7rem]">
+          <BookCover
+            src={getPrimaryBookImage(book)}
+            title={book.title}
+            ratioClassName="aspect-[4/5]"
+            containerClassName="book-catalog-cover rounded-[1.2rem] border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),rgba(15,23,42,0.06))] shadow-[0_16px_34px_rgba(15,23,42,0.12)]"
+            imageClassName="transition duration-500 group-hover:scale-[1.02]"
+            labelClassName="tracking-[0.2em]"
+          />
         </div>
 
-        <div className="mt-5 flex flex-1 flex-col">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-700">
-              {book.category}
-            </p>
-            <h2 className="mt-2 line-clamp-2 text-[1.4rem] font-semibold leading-tight text-slate-900 transition group-hover:text-teal-800 sm:text-[1.5rem]">
-              {book.title}
-            </h2>
-            <p className="mt-2 line-clamp-1 text-sm text-slate-600 sm:text-[0.95rem]">
-              by {book.author}
-            </p>
-          </div>
-
-          <div className="mt-5 rounded-[1.55rem] border border-slate-200/80 bg-slate-50/92 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Weekly rent
+        <div className="min-w-0 flex flex-1 flex-col">
+          <div className="flex flex-wrap items-start justify-between gap-3 pr-10 sm:pr-12">
+            <div className="min-w-0 flex-1">
+              <span
+                className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${getAvailabilityTone(
+                  availabilityStatus
+                )}`}
+              >
+                {toTitleCase(availabilityStatus)}
+              </span>
+              <h2 className="mt-2 line-clamp-2 text-[1.05rem] font-semibold leading-tight text-slate-900 transition group-hover:text-teal-800 sm:text-[1.16rem]">
+                {book.title}
+              </h2>
+              <p className="mt-1 line-clamp-1 text-sm text-slate-600">by {book.author}</p>
+              {ownerName ? (
+                <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
+                  Owner: {ownerName}
                 </p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">
-                  {book.listingType === "sell" ? "Not for rent" : priceSummary.primaryValue}
-                </p>
-              </div>
-              {priceSummary.approxDailyValue ? (
-                <div className="rounded-2xl bg-white px-3 py-2 text-right shadow-sm">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Approx/day
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">
-                    {priceSummary.approxDailyValue}
-                  </p>
-                </div>
               ) : null}
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <DetailChip label="Location" value={book.location} />
-              {priceSummary.secondaryLabel ? (
-                <DetailChip label={priceSummary.secondaryLabel} value={priceSummary.secondaryValue} />
-              ) : (
-                <DetailChip label="Status" value={toTitleCase(availabilityStatus)} />
-              )}
+            <div className="book-catalog-price shrink-0 rounded-[1.1rem] border border-slate-200/80 bg-slate-50/92 px-3 py-2.5 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {priceSummary.approxDailyValue ? "Per day" : priceSummary.primaryLabel}
+              </p>
+              <p className="mt-1 text-[1.05rem] font-semibold text-slate-900">
+                {priceSummary.approxDailyValue || priceSummary.primaryValue}
+              </p>
+              {priceSummary.approxDailyValue && book.listingType !== "sell" ? (
+                <p className="mt-1 text-xs text-slate-500">{priceSummary.primaryValue}</p>
+              ) : null}
             </div>
           </div>
 
-          <div className="ui-trust-band mt-4">
-            <div className="flex flex-wrap gap-2">
-              <span className="ui-trust-chip">{listingTypeLabel} listing</span>
-              <span className="ui-trust-chip">{conditionLabel}</span>
-              <span className="ui-trust-chip">{toTitleCase(availabilityStatus)}</span>
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {metadata.map((item) => (
+              <span key={item} className="book-catalog-chip">
+                {item}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(10.25rem,auto)] sm:items-center">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Price details
+              </p>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-600">
+                <span>{priceSummary.primaryLabel}: {priceSummary.primaryValue}</span>
+                {priceSummary.secondaryLabel ? (
+                  <span>{priceSummary.secondaryLabel}: {priceSummary.secondaryValue}</span>
+                ) : null}
+              </div>
             </div>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              Review condition, pricing, location, and availability together before you open the
-              full listing.
+
+            <div className="book-catalog-cta flex items-center justify-between gap-3 rounded-[1.15rem] border border-slate-200/80 bg-white px-3.5 py-2.5 shadow-sm">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Primary action
+                </p>
+                <p className="mt-1 truncate text-sm font-semibold text-slate-900">Request Book</p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Open
+                <ArrowIcon />
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-3 border-t border-slate-200/80 pt-2.5">
+            <p className="line-clamp-2 text-sm leading-[1.35rem] text-slate-600">
+              Review condition, pricing, location, and availability together before opening the full listing.
             </p>
-          </div>
-
-          <div className="mt-5 flex items-center justify-between border-t border-slate-200/80 pt-4 text-sm">
-            <span className="font-medium text-slate-500">View details</span>
-            <span className="inline-flex items-center gap-2 font-semibold text-teal-700">
-              Open
-              <ArrowIcon />
-            </span>
           </div>
         </div>
       </Link>
     </article>
-  );
-}
-
-function DetailChip({ label, value }) {
-  return (
-    <div className="rounded-[1.2rem] border border-slate-200/80 bg-white px-3.5 py-3 shadow-sm">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-1 line-clamp-2 text-sm font-medium text-slate-800">{value}</p>
-    </div>
   );
 }
 
