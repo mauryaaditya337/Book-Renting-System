@@ -4,6 +4,7 @@ import { BookCover } from "@/components/BookCover";
 import { SavedBookButton } from "@/components/SavedBookButton";
 import { getPrimaryBookImage } from "@/lib/bookImages";
 import { getAvailabilityTone, getListingPriceSummary, toTitleCase } from "@/lib/books";
+import { formatDistanceKm } from "@/lib/location";
 
 export function BookCard({ book }) {
   const priceSummary = getListingPriceSummary(book);
@@ -11,12 +12,13 @@ export function BookCard({ book }) {
   const listingTypeLabel = toTitleCase(book.listingType || "rent");
   const conditionLabel = book.condition || "Condition not shared";
   const ownerName = book.owner?.fullName || book.owner?.name || "";
+  const distanceLabel = book.distanceText || book.distance || formatDistanceKm(book.distanceKm);
   const metadata = [
     `${listingTypeLabel} listing`,
     conditionLabel,
     book.category,
-    book.location,
-    book.distance || book.distanceText || ""
+    book.pickupLocationName || "",
+    book.location
   ].filter(Boolean);
 
   return (
@@ -57,6 +59,11 @@ export function BookCard({ book }) {
               {ownerName ? (
                 <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 md:text-[11px] md:tracking-[0.14em]">
                   Owner: {ownerName}
+                </p>
+              ) : null}
+              {distanceLabel ? (
+                <p className="mt-1.5 inline-flex max-w-full items-center gap-1 text-xs font-medium text-slate-600">
+                  <span className="truncate">{distanceLabel}</span>
                 </p>
               ) : null}
             </div>

@@ -2,6 +2,23 @@ const Book = require("../models/Book");
 const validateRequest = require("../utils/validateRequest");
 const asyncHandler = require("../middleware/asyncHandler");
 const { getCoverImage, getImagesFromPayload, getResponseImages } = require("../utils/bookImages");
+const { calculateDistanceKm, normalizeCoordinateInput } = require("../utils/location");
+
+function getOwnerId(value) {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value._id) {
+    return String(value._id);
+  }
+
+  return String(value);
+}
 
 function getAvailabilityStatus(book) {
   if (book?.availabilityStatus === "unavailable") {
@@ -24,6 +41,9 @@ const formatBookResponse = (book) => ({
   salePrice: typeof book.salePrice === "number" ? book.salePrice : null,
   securityDeposit: book.securityDeposit,
   location: book.location,
+  pickupLocationName: book.pickupLocationName || "",
+  latitude: typeof book.latitude === "number" ? book.latitude : null,
+  longitude: typeof book.longitude === "number" ? book.longitude : null,
   meetupLocation: book.meetupLocation || "",
   depositNote: book.depositNote || "",
   availabilityStatus: getAvailabilityStatus(book),
@@ -44,6 +64,13 @@ const formatBookResponse = (book) => ({
   createdAt: book.createdAt,
   updatedAt: book.updatedAt
 });
+
+function getNormalizedCoordinates(payload = {}) {
+  return {
+    latitude: normalizeCoordinateInput(payload.latitude, { min: -90, max: 90 }),
+    longitude: normalizeCoordinateInput(payload.longitude, { min: -180, max: 180 })
+  };
+}
 
 const availabilityRankExpression = {
   $switch: {
@@ -104,7 +131,7 @@ const updateOwnBookListing = asyncHandler(async (req, res) => {
     throw error;
   }
 
-  if (book.owner.toString() !== req.user._id.toString()) {
+  if (getOwnerId(book.owner) !== getOwnerId(req.user)) {
     const error = new Error("You are not authorized to update this book");
     error.statusCode = 403;
     throw error;
@@ -122,6 +149,9 @@ const updateOwnBookListing = asyncHandler(async (req, res) => {
     "salePrice",
     "securityDeposit",
     "location",
+    "pickupLocationName",
+    "latitude",
+    "longitude",
     "meetupLocation",
     "depositNote",
     "images",
@@ -134,6 +164,16 @@ const updateOwnBookListing = asyncHandler(async (req, res) => {
     }
 
     if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+      if (field === "latitude") {
+        book.latitude = normalizeCoordinateInput(req.body.latitude, { min: -90, max: 90 });
+        continue;
+      }
+
+      if (field === "longitude") {
+        book.longitude = normalizeCoordinateInput(req.body.longitude, { min: -180, max: 180 });
+        continue;
+      }
+
       book[field] = req.body[field];
     }
   }
@@ -178,7 +218,7 @@ const deleteOwnBookListing = asyncHandler(async (req, res) => {
     throw error;
   }
 
-  if (book.owner.toString() !== req.user._id.toString()) {
+  if (getOwnerId(book.owner) !== getOwnerId(req.user)) {
     const error = new Error("You are not authorized to delete this book");
     error.statusCode = 403;
     throw error;
@@ -199,6 +239,8 @@ const getBooks = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const filters = {};
+  const queryLatitude = normalizeCoordinateInput(req.query.latitude, { min: -90, max: 90 });
+  const queryLongitude = normalizeCoordinateInput(req.query.longitude, { min: -180, max: 180 });
 
   if (req.query.search) {
     const searchRegex = new RegExp(req.query.search, "i");
@@ -226,6 +268,67 @@ const getBooks = asyncHandler(async (req, res) => {
       createdAt: -1,
       _id: 1
     };
+  }
+
+  if (req.query.sortBy === "distance" && queryLatitude != null && queryLongitude != null) {
+    const books = await Book.find(filters)
+      .populate("owner", "fullName collegeName currentDegree city bio name phoneNumber");
+
+    const sortedBooks = books
+      .map((book) => ({
+        book,
+        availabilityRank:
+          book.availabilityStatus === "available"
+            ? 0
+            : ["reserved", "unavailable"].includes(book.availabilityStatus)
+              ? 1
+              : book.availabilityStatus === "rented"
+                ? 2
+                : book.availabilityStatus === "sold"
+                  ? 3
+                  : 4,
+        distanceValue: calculateDistanceKm(
+          queryLatitude,
+          queryLongitude,
+          book.latitude,
+          book.longitude
+        )
+      }))
+      .sort((left, right) => {
+        if (left.availabilityRank !== right.availabilityRank) {
+          return left.availabilityRank - right.availabilityRank;
+        }
+
+        if (left.distanceValue == null && right.distanceValue == null) {
+          return right.book.createdAt.getTime() - left.book.createdAt.getTime();
+        }
+
+        if (left.distanceValue == null) {
+          return 1;
+        }
+
+        if (right.distanceValue == null) {
+          return -1;
+        }
+
+        if (left.distanceValue !== right.distanceValue) {
+          return left.distanceValue - right.distanceValue;
+        }
+
+        return right.book.createdAt.getTime() - left.book.createdAt.getTime();
+      });
+
+    const totalBooks = sortedBooks.length;
+    const totalPages = Math.max(1, Math.ceil(totalBooks / limit));
+
+    res.status(200).json({
+      books: sortedBooks.slice(skip, skip + limit).map((entry) => formatBookResponse(entry.book)),
+      totalBooks,
+      currentPage: page,
+      totalPages
+    });
+
+    return;
   }
 
   const [bookResults, totalBooks] = await Promise.all([
@@ -305,6 +408,7 @@ const createBookListing = asyncHandler(async (req, res) => {
   validateRequest(req);
 
   const normalizedImages = getImagesFromPayload(req.body);
+  const normalizedCoordinates = getNormalizedCoordinates(req.body);
 
   const book = await Book.create({
     title: req.body.title,
@@ -318,6 +422,9 @@ const createBookListing = asyncHandler(async (req, res) => {
     salePrice: req.body.listingType === "rent" ? null : req.body.salePrice,
     securityDeposit: req.body.securityDeposit,
     location: req.body.location,
+    pickupLocationName: req.body.pickupLocationName,
+    latitude: normalizedCoordinates.latitude,
+    longitude: normalizedCoordinates.longitude,
     meetupLocation: req.body.meetupLocation,
     depositNote: req.body.depositNote,
     images: normalizedImages,

@@ -89,6 +89,17 @@ const bookSchema = new mongoose.Schema(
       required: [true, "Location is required"],
       trim: true
     },
+    pickupLocationName: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    latitude: {
+      type: Number
+    },
+    longitude: {
+      type: Number
+    },
     meetupLocation: {
       type: String,
       trim: true

@@ -9,6 +9,7 @@ import { FieldMessage } from "@/components/FieldMessage";
 import { useAuth } from "@/components/AuthProvider";
 import { ToastViewport } from "@/components/ToastViewport";
 import { apiRequest } from "@/lib/api";
+import { requestBrowserLocation } from "@/lib/location";
 
 const MAX_IMAGE_FIELDS = 3;
 const ADD_BOOK_DRAFT_KEY = "addBookDraft";
@@ -31,6 +32,9 @@ const initialFormData = {
   salePrice: "",
   securityDeposit: "",
   location: "",
+  pickupLocationName: "",
+  latitude: "",
+  longitude: "",
   meetupLocation: "",
   depositNote: "",
   images: [""]
@@ -149,6 +153,9 @@ function isEmptyDraftState({ formData, flowStage, isbnLookupValue }) {
     formData.salePrice === "" &&
     formData.securityDeposit === "" &&
     formData.location === "" &&
+    formData.pickupLocationName === "" &&
+    formData.latitude === "" &&
+    formData.longitude === "" &&
     formData.meetupLocation === "" &&
     formData.depositNote === "" &&
     JSON.stringify(withAtLeastOneImageField(formData.images)) === JSON.stringify(initialFormData.images)
@@ -175,6 +182,7 @@ export function AddBookForm() {
   const [lastScannedCode, setLastScannedCode] = useState("");
   const [hasHydratedDraft, setHasHydratedDraft] = useState(false);
   const [draftRestoredMessage, setDraftRestoredMessage] = useState("");
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   const resetLookupMessages = () => {
     setLookupError("");
@@ -193,6 +201,36 @@ export function AddBookForm() {
     setFormData((current) => ({ ...current, [name]: value }));
     setFieldErrors((current) => ({ ...current, [name]: "" }));
     setFormError("");
+  };
+
+  const handleUseCurrentLocation = async () => {
+    setIsDetectingLocation(true);
+    setFormError("");
+
+    try {
+      const currentLocation = await requestBrowserLocation();
+
+      setFormData((current) => ({
+        ...current,
+        pickupLocationName: current.pickupLocationName || "Current location",
+        latitude: String(currentLocation.latitude),
+        longitude: String(currentLocation.longitude)
+      }));
+      setFieldErrors((current) => ({
+        ...current,
+        latitude: "",
+        longitude: "",
+        pickupLocationName: ""
+      }));
+    } catch (error) {
+      setFormError(
+        error?.code === 1
+          ? "Location permission was denied. You can still enter latitude and longitude manually."
+          : error.message || "Unable to fetch your current location."
+      );
+    } finally {
+      setIsDetectingLocation(false);
+    }
   };
 
   const handleListingTypeChange = (nextListingType) => {
@@ -467,6 +505,12 @@ export function AddBookForm() {
       const payload = {
         ...formData,
         isbn: formData.isbn.trim(),
+        title: formData.title.trim(),
+        author: formData.author.trim(),
+        category: formData.category.trim(),
+        description: formData.description.trim(),
+        location: formData.location.trim(),
+        pickupLocationName: formData.pickupLocationName.trim(),
         images: normalizedImages,
         listingType: formData.listingType,
         rentalPrice:
@@ -475,6 +519,8 @@ export function AddBookForm() {
           formData.listingType === "rent" ? undefined : Number(formData.salePrice || 0),
         securityDeposit:
           formData.listingType === "sell" ? 0 : Number(formData.securityDeposit || 0),
+        latitude: formData.latitude.trim() ? Number(formData.latitude) : null,
+        longitude: formData.longitude.trim() ? Number(formData.longitude) : null,
         meetupLocation: formData.meetupLocation.trim(),
         depositNote: formData.listingType === "sell" ? "" : formData.depositNote.trim()
       };
@@ -783,6 +829,54 @@ export function AddBookForm() {
                   <div className="grid gap-5 md:grid-cols-2">
                     <InputField label="City or area" name="location" value={formData.location} onChange={handleChange} error={fieldErrors.location} placeholder="Pune" required />
                     <InputField label="Meetup instructions" name="meetupLocation" value={formData.meetupLocation} onChange={handleChange} error={fieldErrors.meetupLocation} placeholder="e.g. Meet near library gate" />
+                  </div>
+                  <div className="mt-5 rounded-[1.35rem] border border-slate-200/80 bg-white/80 p-4 shadow-sm">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Pickup coordinates</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">
+                          Add a pickup label and coordinates so nearby readers can see distance.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleUseCurrentLocation}
+                        disabled={isDetectingLocation}
+                        className="ui-btn-secondary w-full md:w-auto"
+                      >
+                        {isDetectingLocation ? "Detecting..." : "Use My Current Location"}
+                      </button>
+                    </div>
+                    <div className="mt-4 grid gap-5 md:grid-cols-3">
+                      <InputField
+                        label="Pickup Location Name"
+                        name="pickupLocationName"
+                        value={formData.pickupLocationName}
+                        onChange={handleChange}
+                        error={fieldErrors.pickupLocationName}
+                        placeholder="Library gate"
+                      />
+                      <InputField
+                        label="Latitude"
+                        name="latitude"
+                        type="number"
+                        value={formData.latitude}
+                        onChange={handleChange}
+                        error={fieldErrors.latitude}
+                        placeholder="18.5204"
+                        step="any"
+                      />
+                      <InputField
+                        label="Longitude"
+                        name="longitude"
+                        type="number"
+                        value={formData.longitude}
+                        onChange={handleChange}
+                        error={fieldErrors.longitude}
+                        placeholder="73.8567"
+                        step="any"
+                      />
+                    </div>
                   </div>
                 </FormSection>
 

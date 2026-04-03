@@ -9,6 +9,7 @@ import { ProtectedPage } from "@/components/ProtectedPage";
 import { useAuth } from "@/components/AuthProvider";
 import { ToastViewport } from "@/components/ToastViewport";
 import { apiRequest } from "@/lib/api";
+import { requestBrowserLocation } from "@/lib/location";
 
 const MAX_IMAGE_FIELDS = 3;
 
@@ -24,6 +25,9 @@ const initialFormData = {
   salePrice: "",
   securityDeposit: "",
   location: "",
+  pickupLocationName: "",
+  latitude: "",
+  longitude: "",
   meetupLocation: "",
   depositNote: "",
   images: [""]
@@ -79,10 +83,21 @@ function toFormData(book) {
         ? String(book.securityDeposit)
         : "",
     location: book?.location || "",
+    pickupLocationName: book?.pickupLocationName || "",
+    latitude: typeof book?.latitude === "number" ? String(book.latitude) : "",
+    longitude: typeof book?.longitude === "number" ? String(book.longitude) : "",
     meetupLocation: book?.meetupLocation || "",
     depositNote: book?.listingType === "sell" ? "" : book?.depositNote || "",
     images: withAtLeastOneImageField(book?.images || (book?.imageUrl ? [book.imageUrl] : [""]))
   };
+}
+
+function normalizeEntityId(value) {
+  if (!value) {
+    return "";
+  }
+
+  return String(value);
 }
 
 export function EditBookForm({ bookId }) {
@@ -96,6 +111,7 @@ export function EditBookForm({ bookId }) {
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoadingBook, setIsLoadingBook] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -133,8 +149,8 @@ export function EditBookForm({ bookId }) {
     };
   }, [bookId]);
 
-  const ownerId = book?.owner?.id || book?.owner?._id || "";
-  const currentUserId = user?.id || user?._id || "";
+  const ownerId = normalizeEntityId(book?.owner?.id || book?.owner?._id);
+  const currentUserId = normalizeEntityId(user?.id || user?._id);
   const isOwner = Boolean(ownerId && currentUserId && ownerId === currentUserId);
 
   const isRentalListing = formData.listingType !== "sell";
@@ -145,6 +161,36 @@ export function EditBookForm({ bookId }) {
     setFormData((current) => ({ ...current, [name]: value }));
     setFieldErrors((current) => ({ ...current, [name]: "" }));
     setFormError("");
+  };
+
+  const handleUseCurrentLocation = async () => {
+    setIsDetectingLocation(true);
+    setFormError("");
+
+    try {
+      const currentLocation = await requestBrowserLocation();
+
+      setFormData((current) => ({
+        ...current,
+        pickupLocationName: current.pickupLocationName || "Current location",
+        latitude: String(currentLocation.latitude),
+        longitude: String(currentLocation.longitude)
+      }));
+      setFieldErrors((current) => ({
+        ...current,
+        latitude: "",
+        longitude: "",
+        pickupLocationName: ""
+      }));
+    } catch (error) {
+      setFormError(
+        error?.code === 1
+          ? "Location permission was denied. You can still enter latitude and longitude manually."
+          : error.message || "Unable to fetch your current location."
+      );
+    } finally {
+      setIsDetectingLocation(false);
+    }
   };
 
   const handleListingTypeChange = (nextListingType) => {
@@ -246,6 +292,9 @@ export function EditBookForm({ bookId }) {
           category: formData.category.trim(),
           description: formData.description.trim(),
           location: formData.location.trim(),
+          pickupLocationName: formData.pickupLocationName.trim(),
+          latitude: formData.latitude.trim() ? Number(formData.latitude) : null,
+          longitude: formData.longitude.trim() ? Number(formData.longitude) : null,
           meetupLocation: formData.meetupLocation.trim(),
           depositNote: isRentalListing ? formData.depositNote.trim() : "",
           images: normalizedImages,
@@ -375,6 +424,54 @@ export function EditBookForm({ bookId }) {
                   <div className="grid gap-5 sm:grid-cols-2">
                     <InputField label="City or area" name="location" value={formData.location} onChange={handleChange} error={fieldErrors.location} placeholder="Pune" required />
                     <InputField label="Meetup instructions" name="meetupLocation" value={formData.meetupLocation} onChange={handleChange} error={fieldErrors.meetupLocation} placeholder="e.g. Meet near library gate" />
+                  </div>
+                  <div className="mt-5 rounded-[1.35rem] border border-slate-200/80 bg-white/80 p-4 shadow-sm">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Pickup coordinates</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">
+                          Keep a pickup label plus coordinates so distance can be shown to nearby readers.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleUseCurrentLocation}
+                        disabled={isDetectingLocation}
+                        className="ui-btn-secondary w-full md:w-auto"
+                      >
+                        {isDetectingLocation ? "Detecting..." : "Use My Current Location"}
+                      </button>
+                    </div>
+                    <div className="mt-4 grid gap-5 md:grid-cols-3">
+                      <InputField
+                        label="Pickup Location Name"
+                        name="pickupLocationName"
+                        value={formData.pickupLocationName}
+                        onChange={handleChange}
+                        error={fieldErrors.pickupLocationName}
+                        placeholder="Library gate"
+                      />
+                      <InputField
+                        label="Latitude"
+                        name="latitude"
+                        type="number"
+                        value={formData.latitude}
+                        onChange={handleChange}
+                        error={fieldErrors.latitude}
+                        placeholder="18.5204"
+                        step="any"
+                      />
+                      <InputField
+                        label="Longitude"
+                        name="longitude"
+                        type="number"
+                        value={formData.longitude}
+                        onChange={handleChange}
+                        error={fieldErrors.longitude}
+                        placeholder="73.8567"
+                        step="any"
+                      />
+                    </div>
                   </div>
                 </FormSection>
 

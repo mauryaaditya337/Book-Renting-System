@@ -10,6 +10,7 @@ import { SavedBookButton } from "@/components/SavedBookButton";
 import { apiRequest } from "@/lib/api";
 import { saveCurrentLocationForLoginRedirect } from "@/lib/authRedirect";
 import { getBookImages } from "@/lib/bookImages";
+import { enrichBookWithDistance, getStoredUserLocation, requestBrowserLocation } from "@/lib/location";
 import {
   formatPrice,
   getAvailabilityTone,
@@ -27,6 +28,21 @@ export function BookDetailsView({ id }) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [ownRentalRequest, setOwnRentalRequest] = useState(null);
   const [isLoadingOwnRequest, setIsLoadingOwnRequest] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+
+  useEffect(() => {
+    const storedLocation = getStoredUserLocation();
+
+    if (storedLocation) {
+      setUserLocation(storedLocation);
+    }
+
+    requestBrowserLocation()
+      .then((currentLocation) => {
+        setUserLocation(currentLocation);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -133,20 +149,23 @@ export function BookDetailsView({ id }) {
     return null;
   }
 
-  const availabilityStatus = book.availabilityStatus || "available";
+  const displayBook = enrichBookWithDistance(book, userLocation);
+
+  const availabilityStatus = displayBook.availabilityStatus || "available";
   const isRequestAvailable = availabilityStatus === "available";
-  const images = getBookImages(book);
+  const images = getBookImages(displayBook);
   const hasMultipleImages = images.length > 1;
   const activeImage = images[activeImageIndex] || "";
-  const listingType = getListingType(book);
-  const priceSummary = getListingPriceSummary(book);
-  const ownerFullName = book.owner?.fullName || book.owner?.name || "Unknown";
-  const ownerCollegeName = book.owner?.collegeName || "Not shared yet";
-  const ownerCurrentDegree = book.owner?.currentDegree || "";
-  const ownerCity = book.owner?.city || "";
-  const ownerBio = book.owner?.bio || "";
-  const meetupLocation = book.meetupLocation || "";
-  const depositNote = book.depositNote || "";
+  const listingType = getListingType(displayBook);
+  const priceSummary = getListingPriceSummary(displayBook);
+  const ownerFullName = displayBook.owner?.fullName || displayBook.owner?.name || "Unknown";
+  const ownerCollegeName = displayBook.owner?.collegeName || "Not shared yet";
+  const ownerCurrentDegree = displayBook.owner?.currentDegree || "";
+  const ownerCity = displayBook.owner?.city || "";
+  const ownerBio = displayBook.owner?.bio || "";
+  const meetupLocation = displayBook.meetupLocation || "";
+  const depositNote = displayBook.depositNote || "";
+  const pickupLocationName = displayBook.pickupLocationName || "";
   const requestStatus = ownRentalRequest?.status || "";
   const hasPendingRequest = requestStatus === "pending";
   const hasApprovedRequest = requestStatus === "approved";
@@ -160,10 +179,10 @@ export function BookDetailsView({ id }) {
   const stickyPriceLabel = listingType === "sell" ? "One-time price" : "Per day";
   const stickyPriceValue = priceSummary.approxDailyValue || priceSummary.primaryValue;
   const detailChips = [
-    book.category,
-    book.condition || "Condition not shared",
-    meetupLocation || book.location,
-    book.distance || book.distanceText || ""
+    displayBook.category,
+    displayBook.condition || "Condition not shared",
+    pickupLocationName || meetupLocation || displayBook.location,
+    displayBook.distance || displayBook.distanceText || ""
   ].filter(Boolean);
 
   const handlePreviousImage = () => {
@@ -318,13 +337,14 @@ export function BookDetailsView({ id }) {
                 ) : null}
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:mt-7 xl:gap-4">
-                  <HeroMeta label="Condition" value={book.condition || "Not provided"} />
-                  <HeroMeta label="Location" value={book.location || "Not provided"} />
-                  <HeroMeta label="Category" value={book.category || "Not provided"} />
+                  <HeroMeta label="Condition" value={displayBook.condition || "Not provided"} />
+                  <HeroMeta label="Location" value={displayBook.location || "Not provided"} />
+                  <HeroMeta label="Category" value={displayBook.category || "Not provided"} />
                   <HeroMeta label="Owner" value={ownerFullName} />
-                  {book.isbn ? <HeroMeta label="ISBN" value={book.isbn} /> : null}
-                  {book.distance || book.distanceText ? (
-                    <HeroMeta label="Distance" value={book.distance || book.distanceText} />
+                  {displayBook.isbn ? <HeroMeta label="ISBN" value={displayBook.isbn} /> : null}
+                  {pickupLocationName ? <HeroMeta label="Pickup point" value={pickupLocationName} /> : null}
+                  {displayBook.distance || displayBook.distanceText ? (
+                    <HeroMeta label="Distance" value={displayBook.distance || displayBook.distanceText} />
                   ) : null}
                 </div>
 
@@ -421,7 +441,8 @@ export function BookDetailsView({ id }) {
                 </p>
                 <div className="mt-5 grid gap-3 xl:grid-cols-2">
                   <InfoBlock label="Listing type" value={toTitleCase(listingType)} />
-                  <InfoBlock label="Location" value={book.location || "Not provided"} />
+                  <InfoBlock label="Location" value={displayBook.location || "Not provided"} />
+                  {pickupLocationName ? <InfoBlock label="Pickup location" value={pickupLocationName} /> : null}
                 </div>
               </div>
             </div>
@@ -449,9 +470,13 @@ export function BookDetailsView({ id }) {
               <p className="text-sm font-medium uppercase tracking-[0.28em] text-teal-700">Exchange details</p>
               <div className="mt-4 space-y-3">
                 <InfoBlock label="Listing type" value={toTitleCase(listingType)} />
-                <InfoBlock label="City / area" value={book.location || "Not provided"} />
+                <InfoBlock label="City / area" value={displayBook.location || "Not provided"} />
+                {pickupLocationName ? <InfoBlock label="Pickup point" value={pickupLocationName} /> : null}
                 {ownerCity ? <InfoBlock label="Owner city" value={ownerCity} /> : null}
                 {meetupLocation ? <InfoBlock label="Meetup point" value={meetupLocation} /> : null}
+                {displayBook.distance || displayBook.distanceText ? (
+                  <InfoBlock label="Distance" value={displayBook.distance || displayBook.distanceText} />
+                ) : null}
                 {depositNote ? <InfoBlock label="Deposit note" value={depositNote} /> : null}
               </div>
             </div>

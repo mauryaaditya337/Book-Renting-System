@@ -6,6 +6,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import { BookCard } from "@/components/BookCard";
 import { apiRequest } from "@/lib/api";
+import {
+  enrichBooksWithDistance,
+  getStoredUserLocation,
+  requestBrowserLocation
+} from "@/lib/location";
 import { useSavedBooks } from "@/lib/savedBooks";
 
 const PAGE_LIMIT = 6;
@@ -25,6 +30,7 @@ export function BooksBrowse({ initialView = "all" }) {
   const [books, setBooks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [userLocation, setUserLocation] = useState(null);
   const { savedBooks, savedCount, hasHydrated } = useSavedBooks();
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -51,8 +57,28 @@ export function BooksBrowse({ initialView = "all" }) {
     params.set("page", String(pagination.currentPage));
     params.set("limit", String(PAGE_LIMIT));
 
+    if (!isSavedView && userLocation?.latitude != null && userLocation?.longitude != null) {
+      params.set("sortBy", "distance");
+      params.set("latitude", String(userLocation.latitude));
+      params.set("longitude", String(userLocation.longitude));
+    }
+
     return params.toString();
-  }, [appliedFilters, pagination.currentPage]);
+  }, [appliedFilters, isSavedView, pagination.currentPage, userLocation]);
+
+  useEffect(() => {
+    const storedLocation = getStoredUserLocation();
+
+    if (storedLocation) {
+      setUserLocation(storedLocation);
+    }
+
+    requestBrowserLocation()
+      .then((currentLocation) => {
+        setUserLocation(currentLocation);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -145,7 +171,30 @@ export function BooksBrowse({ initialView = "all" }) {
     [savedBooks, appliedFilters]
   );
 
-  const displayedBooks = isSavedView ? filteredSavedBooks : books;
+  const displayedBooks = useMemo(() => {
+    const sourceBooks = isSavedView ? filteredSavedBooks : books;
+    const nextBooks = enrichBooksWithDistance(sourceBooks, userLocation);
+
+    if (!userLocation) {
+      return nextBooks;
+    }
+
+    return [...nextBooks].sort((left, right) => {
+      if (left.distanceKm == null && right.distanceKm == null) {
+        return 0;
+      }
+
+      if (left.distanceKm == null) {
+        return 1;
+      }
+
+      if (right.distanceKm == null) {
+        return -1;
+      }
+
+      return left.distanceKm - right.distanceKm;
+    });
+  }, [books, filteredSavedBooks, isSavedView, userLocation]);
   const totalResults = isSavedView ? filteredSavedBooks.length : pagination.totalBooks;
 
   const quickCategories = useMemo(() => {
@@ -198,6 +247,7 @@ export function BooksBrowse({ initialView = "all" }) {
     : pagination.totalPages > 1
       ? `Page ${pagination.currentPage} of ${pagination.totalPages}`
       : "Single page";
+  const isDistanceSortActive = !isSavedView && Boolean(userLocation);
 
   const clearSingleFilter = (key) => {
     const nextFilters = { ...appliedFilters, [key]: "" };
@@ -310,7 +360,9 @@ export function BooksBrowse({ initialView = "all" }) {
             <p className="hidden text-sm leading-5 text-slate-600 md:block">
               {isSavedView
                 ? "Search and filter your saved books."
-                : "Search first, then narrow by category or location if needed."}
+                : isDistanceSortActive
+                  ? "Search first, then nearby books with coordinates are shown nearest to you."
+                  : "Search first, then narrow by category or location if needed."}
             </p>
             {hasPendingChanges ? (
               <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700">
@@ -387,12 +439,14 @@ export function BooksBrowse({ initialView = "all" }) {
                     ? getResultsHeading(appliedFilters, totalResults, isSavedView)
                     : isSavedView
                       ? resultLabel
-                      : `${visibleCount} shown`}
+                      : isDistanceSortActive
+                        ? `${visibleCount} shown nearest first`
+                        : `${visibleCount} shown`}
                 </p>
                 <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">
                   {isSavedView
                     ? `${visibleCount} visible in saved view`
-                    : `${visibleCount} shown${pagination.totalPages > 1 ? ` | ${pageLabel}` : ""}`}
+                    : `${visibleCount} shown${isDistanceSortActive ? " | Distance enabled" : ""}${pagination.totalPages > 1 ? ` | ${pageLabel}` : ""}`}
                 </p>
               </div>
 

@@ -30,6 +30,9 @@ const allowedBookFields = [
   "salePrice",
   "securityDeposit",
   "location",
+  "pickupLocationName",
+  "latitude",
+  "longitude",
   "meetupLocation",
   "depositNote",
   "images",
@@ -47,6 +50,9 @@ const allowedCreateBookFields = [
   "salePrice",
   "securityDeposit",
   "location",
+  "pickupLocationName",
+  "latitude",
+  "longitude",
   "meetupLocation",
   "depositNote",
   "images",
@@ -55,7 +61,7 @@ const allowedCreateBookFields = [
 
 const allowedConditions = ["New", "Like New", "Good", "Fair", "Poor"];
 const allowedListingTypes = ["rent", "sell", "both"];
-const allowedBookQueryParams = ["search", "category", "location", "sortBy", "sortOrder", "page", "limit"];
+const allowedBookQueryParams = ["search", "category", "location", "sortBy", "sortOrder", "latitude", "longitude", "page", "limit"];
 
 const validateBookImagesPayload = (payload, { required = false } = {}) => {
   if (!payload || Array.isArray(payload) || typeof payload !== "object") {
@@ -148,12 +154,22 @@ const browseBooksValidation = [
     .trim(),
   query("sortBy")
     .optional()
-    .isIn(["createdAt", "rentalPrice"])
-    .withMessage("sortBy must be either createdAt or rentalPrice"),
+    .isIn(["createdAt", "rentalPrice", "distance"])
+    .withMessage("sortBy must be either createdAt, rentalPrice, or distance"),
   query("sortOrder")
     .optional()
     .isIn(["asc", "desc"])
     .withMessage("sortOrder must be either asc or desc"),
+  query("latitude")
+    .optional()
+    .isFloat({ min: -90, max: 90 })
+    .withMessage("Latitude must be a number between -90 and 90")
+    .toFloat(),
+  query("longitude")
+    .optional()
+    .isFloat({ min: -180, max: 180 })
+    .withMessage("Longitude must be a number between -180 and 180")
+    .toFloat(),
   query("page")
     .optional()
     .isInt({ min: 1 })
@@ -289,6 +305,22 @@ const updateBookValidation = [
     .trim()
     .notEmpty()
     .withMessage("Location cannot be empty"),
+  body("pickupLocationName")
+    .optional()
+    .isString()
+    .withMessage("Pickup location name must be a string")
+    .bail()
+    .trim(),
+  body("latitude")
+    .optional({ nullable: true })
+    .isFloat({ min: -90, max: 90 })
+    .withMessage("Latitude must be a number between -90 and 90")
+    .toFloat(),
+  body("longitude")
+    .optional({ nullable: true })
+    .isFloat({ min: -180, max: 180 })
+    .withMessage("Longitude must be a number between -180 and 180")
+    .toFloat(),
   body("meetupLocation")
     .optional()
     .isString()
@@ -419,6 +451,22 @@ const createBookValidation = [
     .trim()
     .notEmpty()
     .withMessage("Location is required"),
+  body("pickupLocationName")
+    .optional()
+    .isString()
+    .withMessage("Pickup location name must be a string")
+    .bail()
+    .trim(),
+  body("latitude")
+    .optional({ nullable: true })
+    .isFloat({ min: -90, max: 90 })
+    .withMessage("Latitude must be a number between -90 and 90")
+    .toFloat(),
+  body("longitude")
+    .optional({ nullable: true })
+    .isFloat({ min: -180, max: 180 })
+    .withMessage("Longitude must be a number between -180 and 180")
+    .toFloat(),
   body("meetupLocation")
     .optional()
     .isString()
