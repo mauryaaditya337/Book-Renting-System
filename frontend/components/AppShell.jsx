@@ -63,6 +63,8 @@ export function AppShell({ children }) {
           ],
     [isAuthenticated]
   );
+  const shouldHideMobileDock =
+    /^\/books\/[^/]+$/.test(pathname || "");
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -153,7 +155,7 @@ export function AppShell({ children }) {
                 </button>
                 <NotificationBell
                   buttonClassName="ui-header-icon"
-                  panelClassName="top-[calc(100%+0.9rem)]"
+                  panelClassName="sm:top-[calc(100%+0.9rem)]"
                 />
                 <AccountMenu
                   isAuthenticated={isAuthenticated}
@@ -207,7 +209,7 @@ export function AppShell({ children }) {
         <main className="flex-1 pt-4 sm:pt-6">{children}</main>
       </div>
 
-      <nav className="mobile-bottom-dock sm:hidden">
+      <nav className={`mobile-bottom-dock sm:hidden ${shouldHideMobileDock ? "hidden" : ""}`}>
         {mobileDockLinks.map((link) => {
           const Icon = link.icon;
           const isActive = isActivePath(link.href, pathname);

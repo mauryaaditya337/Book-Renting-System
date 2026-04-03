@@ -189,8 +189,8 @@ export function BookDetailsView({ id }) {
   };
 
   return (
-    <section className="book-details-page mx-auto w-full max-w-6xl overflow-x-clip pb-32 lg:pb-10">
-      <div className="mb-4 hidden lg:block">
+    <section className="book-details-page mx-auto w-full max-w-6xl overflow-x-clip pb-32 xl:pb-10">
+      <div className="mb-4 hidden xl:block">
         <button
           type="button"
           onClick={handleBackNavigation}
@@ -203,16 +203,16 @@ export function BookDetailsView({ id }) {
         </button>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.22fr)_minmax(18.5rem,0.52fr)] lg:gap-6 lg:items-start">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.22fr)_minmax(18.5rem,0.52fr)] xl:gap-6 xl:items-start">
         <article className="ui-surface overflow-hidden p-0">
-          <div className="book-details-hero p-4 sm:p-6 lg:p-8">
-            <div className="grid gap-6 lg:grid-cols-[minmax(18rem,0.82fr)_minmax(0,1.18fr)] lg:gap-8 lg:items-start">
+          <div className="book-details-hero p-4 sm:p-6 xl:p-8">
+            <div className="grid gap-6 xl:grid-cols-[minmax(18rem,0.82fr)_minmax(0,1.18fr)] xl:gap-8 xl:items-start">
               <div className="min-w-0">
-                <div className="relative mx-auto w-full max-w-sm lg:max-w-none">
+                <div className="relative mx-auto w-full max-w-sm xl:max-w-none">
                   <button
                     type="button"
                     onClick={handleBackNavigation}
-                    className="book-details-mobile-back-button lg:hidden"
+                    className="book-details-mobile-back-button xl:hidden"
                     aria-label="Go back"
                   >
                     <span aria-hidden="true" className="text-lg leading-none">
@@ -229,7 +229,7 @@ export function BookDetailsView({ id }) {
                 </div>
 
                 {hasMultipleImages ? (
-                  <div className="mt-4 space-y-3 lg:mt-5">
+                  <div className="mt-4 space-y-3 xl:mt-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="text-sm font-medium text-slate-600">
                         Image {activeImageIndex + 1} of {images.length}
@@ -252,7 +252,7 @@ export function BookDetailsView({ id }) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 lg:grid-cols-4">
+                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 xl:grid-cols-4">
                       {images.map((image, index) => (
                         <button
                           key={`${image}-${index}`}
@@ -279,7 +279,7 @@ export function BookDetailsView({ id }) {
               </div>
 
               <div className="book-details-main-copy min-w-0">
-                <div className="flex flex-wrap items-start justify-between gap-3 lg:gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-3 xl:gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-700 shadow-sm">
@@ -294,21 +294,21 @@ export function BookDetailsView({ id }) {
                       </span>
                     </div>
 
-                    <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl lg:max-w-[12ch] lg:text-[2.8rem] lg:leading-[1.05]">
+                    <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-tight text-slate-900 sm:text-4xl xl:max-w-[12ch] xl:text-[2.8rem] xl:leading-[1.05]">
                       {book.title}
                     </h1>
-                    <p className="mt-2 text-base text-slate-600 sm:text-lg lg:text-[1.05rem]">by {book.author}</p>
+                    <p className="mt-2 text-base text-slate-600 sm:text-lg xl:text-[1.05rem]">by {book.author}</p>
                   </div>
 
                   <SavedBookButton
                     book={book}
                     showLabel
-                    className="w-full justify-center sm:w-auto lg:self-start"
+                    className="w-full justify-center md:w-auto xl:self-start"
                   />
                 </div>
 
                 {detailChips.length ? (
-                  <div className="mt-5 flex flex-wrap gap-2 lg:mt-6">
+                  <div className="mt-5 flex flex-wrap gap-2 xl:mt-6">
                     {detailChips.map((chip) => (
                       <span key={chip} className="ui-trust-chip max-w-full truncate">
                         {chip}
@@ -317,7 +317,7 @@ export function BookDetailsView({ id }) {
                   </div>
                 ) : null}
 
-                <div className="mt-6 grid grid-cols-2 gap-3 lg:mt-7 lg:grid-cols-2 lg:gap-4">
+                <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:mt-7 xl:gap-4">
                   <HeroMeta label="Condition" value={book.condition || "Not provided"} />
                   <HeroMeta label="Location" value={book.location || "Not provided"} />
                   <HeroMeta label="Category" value={book.category || "Not provided"} />
@@ -328,7 +328,7 @@ export function BookDetailsView({ id }) {
                   ) : null}
                 </div>
 
-                <div className="book-details-price-panel mt-6 rounded-[1.6rem] border border-slate-200/80 bg-white/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)] sm:p-5 lg:hidden">
+                <div className="book-details-price-panel mt-6 rounded-[1.6rem] border border-slate-200/80 bg-white/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)] sm:p-5 xl:hidden">
                   <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -363,7 +363,7 @@ export function BookDetailsView({ id }) {
                   </div>
                 </div>
 
-                <div className="ui-trust-band mt-6 lg:hidden">
+                <div className="ui-trust-band mt-6 xl:hidden">
                   <p className="ui-trust-label">Listing snapshot</p>
                   <p className="ui-trust-copy">
                     Listed by {ownerFullName}
@@ -375,7 +375,7 @@ export function BookDetailsView({ id }) {
             </div>
           </div>
 
-          <div className="hidden border-t border-slate-200/70 bg-white/60 lg:block">
+          <div className="hidden border-t border-slate-200/70 bg-white/60 xl:block">
             <div className="book-details-summary-band p-8">
               <div className="book-details-price-panel rounded-[1.7rem] border border-slate-200/80 bg-white/72 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
                 <div className="flex items-end justify-between gap-6">
@@ -427,7 +427,7 @@ export function BookDetailsView({ id }) {
             </div>
           </div>
 
-          <div className="grid gap-4 border-t border-slate-200/70 bg-white/55 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-5 lg:p-8">
+          <div className="grid gap-4 border-t border-slate-200/70 bg-white/55 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-5 xl:p-8">
             <div className="ui-card p-5 sm:p-6 lg:row-span-2">
               <p className="text-sm font-medium uppercase tracking-[0.28em] text-teal-700">Description</p>
               <p className="mt-4 text-sm leading-7 text-slate-700">
@@ -481,7 +481,7 @@ export function BookDetailsView({ id }) {
           </div>
         </article>
 
-        <aside className="hidden lg:block">
+        <aside className="hidden xl:block">
           <div className="book-details-sticky-bar">
             <div className="space-y-4">
               <div className="min-w-0">
@@ -522,7 +522,7 @@ export function BookDetailsView({ id }) {
         </aside>
       </div>
 
-      <div className="book-details-mobile-bar lg:hidden">
+      <div className="book-details-mobile-bar xl:hidden">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             {stickyPriceLabel}
@@ -779,10 +779,10 @@ function InfoBlock({ label, value }) {
 
 function BookDetailsLoadingState() {
   return (
-    <section className="mx-auto w-full max-w-6xl overflow-x-clip pb-32 lg:pb-10">
+    <section className="mx-auto w-full max-w-6xl overflow-x-clip pb-32 xl:pb-10">
       <div className="ui-surface overflow-hidden p-0">
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1fr)]">
+        <div className="p-4 sm:p-6 xl:p-8">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1fr)]">
             <div>
               <div className="ui-skeleton h-[24rem] rounded-[2rem] sm:h-[30rem]" />
               <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-5">
@@ -824,7 +824,7 @@ function BookDetailsLoadingState() {
           </div>
         </div>
 
-        <div className="grid gap-4 border-t border-slate-200/70 bg-white/55 p-4 sm:p-6 lg:grid-cols-2 lg:p-8">
+        <div className="grid gap-4 border-t border-slate-200/70 bg-white/55 p-4 sm:p-6 lg:grid-cols-2 xl:p-8">
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="ui-skeleton-card space-y-4">
               <div className="ui-skeleton-line w-28" />

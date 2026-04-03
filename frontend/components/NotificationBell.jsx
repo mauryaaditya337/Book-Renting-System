@@ -286,7 +286,7 @@ export function NotificationBell({ buttonClassName = "", panelClassName = "" }) 
   };
 
   return (
-    <div className="relative z-50" ref={panelRef}>
+    <div className="notification-bell relative z-50" ref={panelRef}>
       <button
         type="button"
         aria-label="Open notifications"
@@ -304,13 +304,13 @@ export function NotificationBell({ buttonClassName = "", panelClassName = "" }) 
 
       {isOpen ? (
         <div
-          className={`ui-floating-panel absolute right-0 z-50 mt-3 w-[min(92vw,27rem)] overflow-hidden rounded-[1.75rem] border border-white/75 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur ${panelClassName}`.trim()}
+          className={`notification-panel ui-floating-panel fixed inset-x-2 top-[calc(env(safe-area-inset-top)+0.7rem)] z-[70] w-auto overflow-hidden rounded-[1.75rem] border border-white/75 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-3 sm:w-[min(92vw,27rem)] ${panelClassName}`.trim()}
         >
-          <div className="border-b border-slate-200/80 px-5 py-4">
-            <div className="flex items-center justify-between gap-4">
+          <div className="notification-panel-header border-b border-slate-200/80 px-4 py-3.5 sm:px-5 sm:py-4">
+            <div className="notification-panel-toolbar flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-900">Notifications</p>
-                <p className="text-xs text-slate-500">
+                <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">
                   {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
                 </p>
               </div>
@@ -318,19 +318,19 @@ export function NotificationBell({ buttonClassName = "", panelClassName = "" }) 
                 type="button"
                 onClick={handleMarkAllAsRead}
                 disabled={unreadCount === 0 || isMarkingAll}
-                className="ui-pill-nav bg-slate-100 px-3 py-2 text-xs text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                className="notification-panel-mark ui-pill-nav bg-slate-100 px-3 py-1.5 text-[11px] text-slate-700 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3.5 sm:py-2 sm:text-xs"
               >
                 {isMarkingAll ? "Updating..." : "Mark all as read"}
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="notification-panel-stats mt-3 grid grid-cols-2 gap-2.5 sm:mt-4 sm:gap-3">
               <PanelStat label="Unread" value={String(unreadCount)} tone="teal" />
               <PanelStat label="Actionable" value={String(actionableCount)} tone="slate" />
             </div>
           </div>
 
-          <div className="notification-panel-scroll max-h-[30rem] overflow-y-auto px-3 py-3">
+          <div className="notification-panel-scroll max-h-[min(72vh,30rem)] overflow-y-auto px-2.5 py-2.5 sm:px-3 sm:py-3">
             {isLoading ? (
               <PanelState
                 title="Loading notifications"
@@ -352,7 +352,7 @@ export function NotificationBell({ buttonClassName = "", panelClassName = "" }) 
             ) : null}
 
             {!isLoading && !errorMessage && notifications.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-1.5 sm:space-y-2">
                 {notifications.map((notification) => {
                   const href = notificationRouteByType[notification.type] || "";
                   const meta = getNotificationMeta(notification, href);
@@ -360,44 +360,44 @@ export function NotificationBell({ buttonClassName = "", panelClassName = "" }) 
                     <>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                             <span className={`notification-type-chip ${meta.toneClassName}`}>
                               {meta.typeLabel}
                             </span>
-                            <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 sm:text-[11px] sm:tracking-[0.16em]">
                               {notification.isRead ? "Read" : "Unread"}
                             </span>
                           </div>
-                          <p className="mt-2 text-sm font-medium leading-6 text-slate-900">
+                          <p className="mt-1.5 text-sm font-medium leading-5 text-slate-900 sm:mt-2 sm:leading-6">
                             {notification.message}
                           </p>
-                          <p className="mt-2 text-xs leading-5 text-slate-500">
+                          <p className="mt-1.5 text-[11px] leading-5 text-slate-500 sm:mt-2 sm:text-xs sm:leading-5">
                             {meta.detail}
                           </p>
                         </div>
-                        <div className="flex shrink-0 flex-col items-end gap-2">
+                        <div className="flex shrink-0 flex-col items-end gap-1.5 sm:gap-2">
                           {!notification.isRead ? (
-                            <span className="mt-1 h-2.5 w-2.5 rounded-full bg-teal-600 shadow-[0_0_0_4px_rgba(20,184,166,0.12)]" />
+                            <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-teal-600 shadow-[0_0_0_4px_rgba(20,184,166,0.12)]" />
                           ) : null}
                           {meta.isActionable ? (
-                            <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+                            <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[0.16em]">
                               Open
                             </span>
                           ) : null}
                         </div>
                       </div>
-                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200/70 pt-3">
-                        <p className="text-xs text-slate-500">
+                      <div className="mt-2.5 flex items-center justify-between gap-2.5 border-t border-slate-200/70 pt-2.5 sm:mt-3 sm:gap-3 sm:pt-3">
+                        <p className="text-[11px] text-slate-500 sm:text-xs">
                           {formatNotificationTime(notification.createdAt)}
                         </p>
-                        <p className="text-xs font-medium text-slate-500">
+                        <p className="text-[11px] font-medium text-slate-500 sm:text-xs">
                           {meta.ctaLabel}
                         </p>
                       </div>
                     </>
                   );
 
-                  const itemClassName = `block w-full rounded-[1.45rem] border px-4 py-3 text-left transition duration-200 ${
+                  const itemClassName = `block w-full rounded-[1.3rem] border px-3 py-2.5 text-left transition duration-200 sm:rounded-[1.45rem] sm:px-4 sm:py-3 ${
                     notification.isRead
                       ? "border-slate-200 bg-slate-50/78 hover:bg-slate-100"
                       : `border-teal-100 bg-teal-50/72 hover:bg-teal-100/75 ${meta.rowAccentClassName}`
@@ -476,9 +476,9 @@ function PanelStat({ label, value, tone }) {
       : "border-slate-200 bg-slate-50/90 text-slate-900";
 
   return (
-    <div className={`rounded-[1.2rem] border px-3.5 py-3 shadow-sm ${toneClassName}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-current/70">{label}</p>
-      <p className="mt-1 text-base font-semibold text-current">{value}</p>
+    <div className={`rounded-[1.1rem] border px-3 py-2.5 shadow-sm sm:rounded-[1.2rem] sm:px-3.5 sm:py-3 ${toneClassName}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-current/70 sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
+      <p className="mt-0.5 text-[0.95rem] font-semibold text-current sm:mt-1 sm:text-base">{value}</p>
     </div>
   );
 }

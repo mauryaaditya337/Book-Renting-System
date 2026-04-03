@@ -183,7 +183,7 @@ export function IncomingRequestsView() {
 
   return (
     <ProtectedPage>
-      <section className="space-y-6">
+      <section className="space-y-5 md:space-y-6">
         <ToastViewport
           toasts={[
             actionMessage
@@ -206,16 +206,16 @@ export function IncomingRequestsView() {
               : null
           ]}
         />
-        <div className="ui-surface p-6 sm:p-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="request-page-hero ui-surface p-5 sm:p-6 lg:p-8">
+          <div className="request-page-toolbar flex flex-col gap-3.5 lg:flex-row lg:justify-between">
             <div>
-              <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
+              <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-teal-700">
                 Incoming Requests
               </p>
-              <h1 className="mt-3 text-3xl font-semibold text-slate-900 sm:text-4xl">
+              <h1 className="mt-2 text-[1.85rem] font-semibold text-slate-900 sm:text-[2.25rem]">
                 Review requests for your books
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                 Approve or reject new requests and keep an eye on the full request history for your
                 listings.
               </p>
@@ -226,7 +226,7 @@ export function IncomingRequestsView() {
             </Link>
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-2.5 sm:gap-3">
+          <div className="request-filter-row mt-5 sm:mt-6">
             {STATUS_FILTERS.map((filter) => {
               const isActive = statusFilter === filter.value;
 
@@ -235,11 +235,7 @@ export function IncomingRequestsView() {
                   key={filter.value || "all"}
                   type="button"
                   onClick={() => handleFilterChange(filter.value)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    isActive
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
+                  className={`request-filter-pill ${isActive ? "request-filter-pill-active" : ""}`}
                 >
                   {filter.label}
                 </button>
@@ -255,7 +251,7 @@ export function IncomingRequestsView() {
         ) : requests.length === 0 ? (
           <EmptyState statusFilter={statusFilter} />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 md:space-y-5">
             {statusFilter ? (
               <RequestGrid
                 requests={requests}
@@ -337,10 +333,10 @@ function RequestSection(props) {
   }
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-3.5 md:space-y-4">
       <div className="request-section-heading">
         <h2 className="text-xl font-semibold text-slate-900">{props.title}</h2>
-        <p className="mt-1 text-sm leading-6 text-slate-600">{props.description}</p>
+        <p className="mt-1 text-sm leading-5 text-slate-600">{props.description}</p>
       </div>
       <RequestGrid {...props} />
     </section>
@@ -387,7 +383,7 @@ function RequestGrid({
   handleRejectCancel
 }) {
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3.5 md:gap-4">
       {requests.map((request) => {
         const isPending = request.status === "pending";
         const isReturnPending = request.status === "return_pending";
@@ -409,25 +405,25 @@ function RequestGrid({
         const lifecycleNote = getIncomingLifecycleNote(request);
 
         return (
-          <article key={request.id} className="request-card ui-card p-4 sm:p-5 xl:p-6">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-              <div className="flex min-w-0 gap-4 xl:min-w-0 xl:flex-[1.05]">
+          <article key={request.id} className="request-card ui-card p-3.5 sm:p-4 lg:p-5 xl:p-6">
+            <div className="request-card-layout">
+              <div className="request-card-main xl:min-w-0 xl:flex-[1.05]">
                 <BookCover
                   src={getPrimaryBookImage(request.book)}
                   title={request.book?.title}
                   ratioClassName="aspect-[4/5]"
-                  containerClassName="w-24 shrink-0 rounded-[1.4rem] shadow-[0_20px_44px_rgba(15,23,42,0.12)] sm:w-28"
+                  containerClassName="request-card-cover"
                   labelClassName="tracking-[0.2em]"
                 />
-                <div className="min-w-0 space-y-4">
+                <div className="request-card-identity">
                   <div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="request-card-badges">
                       {request.book?.category ? (
                         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-700">
                           {request.book?.category}
                         </p>
                       ) : null}
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                      <span className="request-card-type-pill">
                         Incoming request
                       </span>
                     </div>
@@ -441,7 +437,7 @@ function RequestGrid({
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 xl:min-w-0 xl:flex-1 xl:grid-cols-2">
+              <div className="request-card-meta xl:min-w-0 xl:flex-1">
                 <InfoRow
                   label="Requester"
                   value={renterName}
@@ -465,23 +461,25 @@ function RequestGrid({
                 ) : null}
               </div>
 
-              <div className="request-card__aside ui-subtle-card p-4 sm:p-5 xl:w-[18rem] xl:shrink-0">
+              <div className="request-card__aside request-card-aside ui-subtle-card">
                 <div className="flex flex-col gap-4">
                   <div className="space-y-3">
-                    <span
-                      className={`request-status-pill inline-flex w-fit rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] ${statusTone}`}
-                    >
-                      {statusLabel}
-                    </span>
+                    <div className="request-status-block">
+                      <span
+                        className={`request-status-pill inline-flex w-fit rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] ${statusTone}`}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
                     <p className="text-sm leading-6 text-slate-600">{getStatusDetail(request)}</p>
-                    <div className="ui-trust-card">
+                    <div className="request-note-panel">
                       <p className="ui-trust-label">Owner guidance</p>
                       <p className="ui-trust-copy">{lifecycleNote}</p>
                     </div>
                   </div>
 
                   <div className="request-card__actions border-t border-slate-200/80 pt-4">
-                    <div className="flex flex-col gap-3">
+                      <div className="request-action-stack">
                       <Link href={`/books/${request.book?.id}`} className="ui-btn-secondary w-full px-4 py-2">
                         View book
                       </Link>
@@ -533,14 +531,14 @@ function RequestGrid({
             </div>
 
             {request.status === "rejected" && request.rejectionReason ? (
-              <div className="mt-4 rounded-[1.5rem] border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm text-rose-700">
+              <div className="mt-3.5 rounded-[1.35rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 sm:mt-4 sm:rounded-[1.5rem] sm:py-3.5">
                 <p className="font-medium">Rejection reason</p>
                 <p className="mt-1 leading-6">{request.rejectionReason}</p>
               </div>
             ) : null}
 
             {isRejectingThisRequest ? (
-              <div className="mt-4 rounded-[1.5rem] border border-rose-200 bg-rose-50 p-4">
+              <div className="mt-3.5 rounded-[1.35rem] border border-rose-200 bg-rose-50 p-3.5 sm:mt-4 sm:rounded-[1.5rem] sm:p-4">
                 <label className="block">
                   <span className="mb-2 block text-sm font-medium text-rose-900">
                     Rejection reason
@@ -553,12 +551,12 @@ function RequestGrid({
                     placeholder="Tell the renter why this request cannot be approved."
                   />
                 </label>
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
                   <button
                     type="button"
                     disabled={isSubmitting || !rejectionReason.trim()}
                     onClick={() => handleRejectSubmit(request.id)}
-                    className="rounded-2xl bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+                    className="ui-btn-danger-soft border-rose-300 bg-rose-600 px-4 py-2 text-white hover:bg-rose-700 hover:text-white disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-400 disabled:text-white"
                   >
                     {isSubmitting ? "Rejecting..." : "Confirm rejection"}
                   </button>
@@ -566,7 +564,7 @@ function RequestGrid({
                     type="button"
                     disabled={isSubmitting}
                     onClick={handleRejectCancel}
-                    className="rounded-2xl bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    className="ui-btn-light px-4 py-2 disabled:cursor-not-allowed disabled:bg-slate-100"
                   >
                     Cancel
                   </button>
@@ -582,8 +580,8 @@ function RequestGrid({
 
 function InfoRow({ label, value, meta }) {
   return (
-    <div className="request-info-card rounded-2xl px-4 py-3">
-      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{label}</p>
+    <div className="request-info-card">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{label}</p>
       <p className="mt-1 font-medium text-slate-800">{value || "Not available"}</p>
       {meta ? <p className="mt-1 text-xs leading-5 text-slate-500">{meta}</p> : null}
     </div>
@@ -592,7 +590,7 @@ function InfoRow({ label, value, meta }) {
 
 function LoadingState() {
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3.5 md:gap-4">
       {Array.from({ length: 3 }).map((_, index) => (
         <RequestLoadingCard key={index} />
       ))}
@@ -686,10 +684,10 @@ function getIncomingLifecycleNote(request) {
 
 function RequestLoadingCard() {
   return (
-    <div className="request-card ui-card p-4 sm:p-5 xl:p-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-        <div className="flex min-w-0 gap-4 xl:flex-[1.05]">
-          <div className="ui-skeleton h-28 w-24 rounded-[1.4rem] sm:w-28" />
+    <div className="request-card ui-card p-3.5 sm:p-4 lg:p-5 xl:p-6">
+      <div className="request-card-layout">
+        <div className="request-card-main xl:flex-[1.05]">
+          <div className="ui-skeleton request-card-cover aspect-[4/5]" />
           <div className="min-w-0 flex-1 space-y-4">
             <div className="space-y-3">
               <div className="flex gap-2">
@@ -702,13 +700,13 @@ function RequestLoadingCard() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:flex-1 xl:grid-cols-2">
+        <div className="request-card-meta xl:flex-1">
           {Array.from({ length: 5 }).map((_, index) => (
             <div key={index} className="ui-skeleton h-20 rounded-2xl" />
           ))}
         </div>
 
-        <div className="request-card__aside ui-subtle-card p-4 sm:p-5 xl:w-[18rem] xl:shrink-0">
+        <div className="request-card__aside request-card-aside ui-subtle-card">
           <div className="space-y-3">
             <div className="ui-skeleton-pill w-28" />
             <div className="ui-skeleton-line w-full" />

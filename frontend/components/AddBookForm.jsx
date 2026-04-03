@@ -557,19 +557,19 @@ export function AddBookForm() {
               : null
           ]}
         />
-        <div className="ui-surface add-book-shell p-5 sm:p-7">
+        <div className="ui-surface add-book-shell p-5 md:p-7">
           <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">Add Book</p>
-          <h1 className="mt-2.5 text-3xl font-semibold text-slate-900 sm:mt-3 sm:text-[2.55rem]">
+          <h1 className="mt-2.5 text-3xl font-semibold text-slate-900 md:mt-3 md:text-[2.55rem]">
             Create a new book listing
           </h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600 sm:mt-2">
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600 md:mt-2">
             Start with barcode scanning, then use ISBN lookup or manual entry when needed.
           </p>
 
           <FlowStageHeader currentStage={flowStage} formSource={formSource} />
 
           {flowStage !== FLOW_STAGES.form ? (
-            <div className="mt-5 space-y-4 sm:mt-6 sm:space-y-5">
+            <div className="mt-5 space-y-4 md:mt-6 md:space-y-5">
               <StageSwitcher
                 currentStage={flowStage}
                 onSelectIsbn={handleSwitchToIsbn}
@@ -604,7 +604,7 @@ export function AddBookForm() {
                           Detected code: <span className="font-semibold">{lastScannedCode}</span>
                         </p>
                       ) : null}
-                      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                      <div className="mt-4 flex flex-col gap-3 md:flex-row">
                         <button
                           type="button"
                           onClick={handleSwitchToScan}
@@ -635,13 +635,13 @@ export function AddBookForm() {
               ) : null}
 
               {flowStage === FLOW_STAGES.isbn ? (
-                <div className="add-book-stage-panel rounded-[1.5rem] border border-teal-100 bg-teal-50/70 p-4 sm:p-5">
+                <div className="add-book-stage-panel rounded-[1.5rem] border border-teal-100 bg-teal-50/70 p-4 md:p-5">
                   <StageCard
                     eyebrow="Step 2"
                     title="Look up by ISBN"
                     description="Enter an ISBN to fetch title, author, cover, and other available metadata before opening the shared editable form."
                   />
-                  <div className="mt-4 grid gap-3.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <div className="mt-4 grid gap-3.5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
                     <InputField
                       label="Enter ISBN"
                       name="isbnLookup"
@@ -657,7 +657,7 @@ export function AddBookForm() {
                       type="button"
                       onClick={handleFetchDetails}
                       disabled={isFetchingMetadata || !isbnLookupValue.trim()}
-                      className="ui-btn-primary sm:min-w-40"
+                      className="ui-btn-primary md:min-w-40"
                     >
                       {isFetchingMetadata ? "Fetching..." : "Fetch Details"}
                     </button>
@@ -666,7 +666,7 @@ export function AddBookForm() {
                   {lookupError ? (
                     <div className="ui-feedback-warning mt-4">
                       <p>{lookupError}</p>
-                      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                      <div className="mt-4 flex flex-col gap-3 md:flex-row">
                         <button
                           type="button"
                           onClick={handleFetchDetails}
@@ -694,8 +694,8 @@ export function AddBookForm() {
 
           {flowStage === FLOW_STAGES.form ? (
             <>
-              <div className="mt-6 rounded-[1.5rem] border border-emerald-100 bg-emerald-50/80 p-4 sm:mt-7 sm:p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-6 rounded-[1.5rem] border border-emerald-100 bg-emerald-50/80 p-4 md:mt-7 md:p-5">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-emerald-900">
                       {formSource === FLOW_STAGES.manual
@@ -708,7 +708,7 @@ export function AddBookForm() {
                         : "Review the autofilled details, fix anything missing, and adjust the images before creating the listing."}
                     </p>
                   </div>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  <div className="flex flex-col gap-3 md:flex-row md:flex-wrap">
                     <button
                       type="button"
                       onClick={handleSwitchToScan}
@@ -736,7 +736,7 @@ export function AddBookForm() {
                 </div>
               </div>
 
-              <form className="mt-6 space-y-5 sm:mt-7 sm:space-y-5" onSubmit={handleSubmit}>
+              <form className="mt-6 space-y-5 md:mt-7 md:space-y-5" onSubmit={handleSubmit}>
                 <ListingTypeField
                   value={formData.listingType}
                   error={fieldErrors.listingType}
@@ -746,13 +746,13 @@ export function AddBookForm() {
                   title="Basic Info"
                   description="Share the title, author, condition, and a short description so the listing feels complete and easy to scan."
                 >
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid gap-5 md:grid-cols-2">
                     <InputField label="Title" name="title" value={formData.title} onChange={handleChange} error={fieldErrors.title} placeholder="Clean Code" required />
                     <InputField label="Author" name="author" value={formData.author} onChange={handleChange} error={fieldErrors.author} placeholder="Robert C. Martin" required />
                     <InputField label="ISBN" name="isbn" value={formData.isbn} onChange={handleChange} error={fieldErrors.isbn} placeholder="9780132350884" />
                     <InputField label="Category" name="category" value={formData.category} onChange={handleChange} error={fieldErrors.category} placeholder="Programming" required />
                     <SelectField label="Condition" name="condition" value={formData.condition} onChange={handleChange} error={fieldErrors.condition} options={conditionOptions} />
-                    <TextAreaField className="sm:col-span-2" label="Description" name="description" value={formData.description} onChange={handleChange} error={fieldErrors.description} placeholder="A short description of the book, its condition, and anything renters should know." required />
+                    <TextAreaField className="md:col-span-2" label="Description" name="description" value={formData.description} onChange={handleChange} error={fieldErrors.description} placeholder="A short description of the book, its condition, and anything renters should know." required />
                   </div>
                 </FormSection>
 
@@ -760,7 +760,7 @@ export function AddBookForm() {
                   title="Pricing"
                   description="Keep the pricing simple and readable. Rental listings show weekly pricing first."
                 >
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid gap-5 md:grid-cols-2">
                     {formData.listingType !== "sell" ? (
                       <InputField label="Rent per week" name="rentalPrice" type="number" value={formData.rentalPrice} onChange={handleChange} error={fieldErrors.rentalPrice} placeholder="55" required min="0" step="0.01" />
                     ) : null}
@@ -780,7 +780,7 @@ export function AddBookForm() {
                   title="Location"
                   description="Set a clear place and meetup note so pickups feel straightforward."
                 >
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid gap-5 md:grid-cols-2">
                     <InputField label="City or area" name="location" value={formData.location} onChange={handleChange} error={fieldErrors.location} placeholder="Pune" required />
                     <InputField label="Meetup instructions" name="meetupLocation" value={formData.meetupLocation} onChange={handleChange} error={fieldErrors.meetupLocation} placeholder="e.g. Meet near library gate" />
                   </div>
@@ -801,18 +801,18 @@ export function AddBookForm() {
                     </p>
                   ) : null}
 
-                  <div className="flex flex-col gap-3 sm:flex-row">
+                  <div className="flex flex-col gap-3 md:flex-row">
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="ui-btn-primary w-full sm:w-auto"
+                      className="ui-btn-primary w-full md:w-auto"
                     >
                       {isSubmitting ? "Creating listing..." : "Create listing"}
                     </button>
                     <button
                       type="button"
                       onClick={() => router.push("/my-listings")}
-                      className="ui-btn-secondary w-full sm:w-auto"
+                      className="ui-btn-secondary w-full md:w-auto"
                     >
                       View my listings
                     </button>
@@ -852,7 +852,7 @@ function FlowStageHeader({ currentStage, formSource }) {
   ];
 
   return (
-    <div className="add-book-progress mt-5 grid gap-2 sm:mt-6 sm:grid-cols-2 md:grid-cols-4">
+    <div className="add-book-progress mt-5 grid gap-2 md:mt-6 md:grid-cols-2 xl:grid-cols-4">
       {steps.map((step, index) => (
         <div
           key={step.id}
@@ -897,8 +897,8 @@ function StageSwitcher({
   ];
 
   return (
-    <div className="add-book-mode-switcher rounded-[1.6rem] border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4">
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+    <div className="add-book-mode-switcher rounded-[1.6rem] border border-slate-200 bg-slate-50/70 p-3.5 md:p-4">
+      <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
         <p className="text-sm font-semibold text-slate-900">Choose how you want to start</p>
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-teal-700">
           Scanner stays default
@@ -907,7 +907,7 @@ function StageSwitcher({
       <p className="mt-1.5 text-sm leading-6 text-slate-600">
         Pick a starting method below. Each option leads into the same editable form.
       </p>
-      <div className="mt-3.5 grid gap-2.5 sm:grid-cols-3">
+      <div className="mt-3.5 grid gap-2.5 md:grid-cols-3">
         {buttons.map((button) => (
           <button
             key={button.id}
@@ -929,9 +929,9 @@ function StageSwitcher({
 
 function StageCard({ eyebrow, title, description }) {
   return (
-    <div className="add-book-stage-card rounded-[1.4rem] border border-sky-100 bg-sky-50/70 p-4 sm:p-5">
+    <div className="add-book-stage-card rounded-[1.4rem] border border-sky-100 bg-sky-50/70 p-4 md:p-5">
       <p className="text-xs font-medium uppercase tracking-[0.25em] text-sky-700">{eyebrow}</p>
-      <h2 className="mt-1.5 text-lg font-semibold text-slate-900 sm:text-xl">{title}</h2>
+      <h2 className="mt-1.5 text-lg font-semibold text-slate-900 md:text-xl">{title}</h2>
       <p className="mt-1.5 text-sm leading-6 text-slate-600">{description}</p>
     </div>
   );
@@ -970,7 +970,7 @@ function SelectField({ error, label, options, renderOptionLabel = (option) => op
 
 function ListingTypeField({ value, error, onChange }) {
   return (
-    <div className="sm:col-span-2 rounded-[1.5rem] border border-teal-100 bg-teal-50/70 p-5 sm:p-6">
+    <div className="md:col-span-2 rounded-[1.5rem] border border-teal-100 bg-teal-50/70 p-5 md:p-6">
       <div className="flex flex-col gap-2">
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-teal-700">
           Listing Type
@@ -981,7 +981,7 @@ function ListingTypeField({ value, error, onChange }) {
         </p>
       </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
+      <div className="mt-4 grid gap-3 xl:grid-cols-3">
         {listingTypeOptions.map((option) => {
           const isActive = value === option.value;
 
@@ -1044,8 +1044,8 @@ function ImageUrlsField({
   const canAddMore = images.length < MAX_IMAGE_FIELDS;
 
   return (
-    <div className="sm:col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="md:col-span-2 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5 md:p-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm font-medium text-slate-700">Book images</p>
           <p className="mt-1 text-sm leading-6 text-slate-500">
@@ -1068,7 +1068,7 @@ function ImageUrlsField({
             key={`image-field-${index}`}
             className="rounded-[1.25rem] border border-white/70 bg-white p-4 shadow-sm"
           >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start">
               <label className="block flex-1">
                 <span className="mb-2 block text-sm font-medium text-slate-700">
                   {index === 0 ? "Cover image URL" : `Image URL ${index + 1}`}
@@ -1102,7 +1102,7 @@ function ImageUrlsField({
 
 function FormSection({ title, description, children }) {
   return (
-    <section className="ui-subtle-card p-5 sm:p-6">
+    <section className="ui-subtle-card p-5 md:p-6">
       <div className="mb-4">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-700">{title}</p>
         <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>

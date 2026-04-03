@@ -220,34 +220,34 @@ export function BooksBrowse({ initialView = "all" }) {
   };
 
   return (
-    <section className="space-y-4 sm:space-y-6">
-      <div className="ui-surface p-3.5 sm:p-5 lg:p-6">
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+    <section className="space-y-4 sm:space-y-5 md:space-y-6">
+      <div className="ui-surface p-3.5 sm:p-4 lg:p-6">
+        <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-teal-700">Browse Books</p>
-            <h1 className="mt-0.5 text-[1.7rem] font-semibold text-slate-900 sm:mt-1 sm:text-[2rem]">
+            <h1 className="mt-0.5 text-[1.55rem] font-semibold text-slate-900 sm:mt-1 md:text-[1.85rem] lg:text-[2rem]">
               {isSavedView ? "Revisit your saved books" : "Find books from the community"}
             </h1>
             {isSavedView ? (
-              <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-600 sm:leading-6">
+              <p className="mt-1 max-w-2xl text-sm leading-5 text-slate-600">
                 Saved books stay on this device so you can quickly revisit listings later.
               </p>
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
             {shouldShowDefaultSummary ? (
-              <div className="hidden rounded-full bg-slate-900 px-3 py-2 text-sm font-medium text-slate-100 sm:inline-flex">
+              <div className="hidden rounded-full bg-slate-900 px-3 py-2 text-sm font-medium text-slate-100 md:inline-flex">
                 {resultLabel}
               </div>
             ) : null}
-            <Link href="/request-book" className="ui-btn-secondary w-full sm:inline-flex sm:w-auto sm:px-4 sm:py-2.5">
+            <Link href="/request-book" className="ui-btn-secondary w-full md:inline-flex md:w-auto md:px-4 md:py-2.5">
               Request a Book
             </Link>
           </div>
         </div>
 
-        <form className="mt-3.5 space-y-3 sm:space-y-4" onSubmit={handleApplyFilters}>
-          <div className="flex flex-wrap gap-2.5">
+        <form className="mt-3 space-y-2.5 sm:mt-3.5 sm:space-y-3" onSubmit={handleApplyFilters}>
+          <div className="flex flex-wrap gap-2">
             <ViewToggleButton
               isActive={!isSavedView}
               label="All books"
@@ -266,7 +266,7 @@ export function BooksBrowse({ initialView = "all" }) {
             />
           </div>
 
-            <div className="book-browse-search-row flex items-center gap-2 sm:gap-3">
+          <div className="book-browse-search-row flex items-center gap-2 sm:gap-2.5">
             <label className="relative block flex-1">
               <span className="sr-only">Search books</span>
               <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -275,12 +275,12 @@ export function BooksBrowse({ initialView = "all" }) {
                 value={draftFilters.search}
                 onChange={handleFilterChange}
                 placeholder="Search by title or author name"
-                  className="ui-input min-h-12 rounded-[1.25rem] border-white/80 bg-white/92 pl-12 pr-12 text-sm shadow-[0_8px_22px_rgba(15,23,42,0.04)] sm:min-h-13 sm:text-base"
+                className="ui-input min-h-11 rounded-[1.15rem] border-white/80 bg-white/92 pl-11 pr-11 text-sm shadow-[0_8px_22px_rgba(15,23,42,0.04)] md:min-h-12 md:rounded-[1.25rem]"
               />
               <button
                 type="submit"
                 aria-label="Search books"
-                className="absolute right-1.5 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[1rem] bg-slate-900 text-white transition hover:bg-slate-700 sm:h-10 sm:w-10"
+                className="absolute right-1.5 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[0.95rem] bg-slate-900 text-white transition hover:bg-slate-700"
               >
                 <ArrowIcon className="h-4 w-4" />
               </button>
@@ -290,7 +290,7 @@ export function BooksBrowse({ initialView = "all" }) {
               type="button"
               onClick={() => setIsFiltersOpen((current) => !current)}
               aria-expanded={isFiltersOpen}
-              className={`relative inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-[1.15rem] border px-3.5 text-sm font-semibold transition ${
+              className={`relative inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[1.05rem] border px-3 text-sm font-semibold transition md:px-3.5 ${
                 isFiltersOpen || activeFilterCount > 0
                   ? "border-teal-200 bg-teal-50 text-teal-800"
                   : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -307,13 +307,13 @@ export function BooksBrowse({ initialView = "all" }) {
           </div>
 
           <div className="flex min-h-4 items-center justify-between gap-2">
-            <p className="hidden text-sm leading-6 text-slate-600 sm:block">
+            <p className="hidden text-sm leading-5 text-slate-600 md:block">
               {isSavedView
                 ? "Search and filter your saved books."
                 : "Search first, then narrow by category or location if needed."}
             </p>
             {hasPendingChanges ? (
-              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700">
                 Pending changes
               </span>
             ) : null}
@@ -324,8 +324,8 @@ export function BooksBrowse({ initialView = "all" }) {
               isFiltersOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
             }`}
           >
-            <div className="ui-subtle-card space-y-4 p-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+            <div className="ui-subtle-card space-y-3 p-3.5 sm:space-y-4 sm:p-4">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_auto] xl:items-end">
                 <FilterInput
                   label="Category"
                   name="category"
@@ -340,7 +340,7 @@ export function BooksBrowse({ initialView = "all" }) {
                   onChange={handleFilterChange}
                   placeholder="Pune"
                 />
-                <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+                <div className="flex flex-col gap-2.5 md:flex-row xl:flex-col">
                   <button type="submit" className="ui-btn-primary w-full">
                     Apply filters
                   </button>
@@ -355,7 +355,7 @@ export function BooksBrowse({ initialView = "all" }) {
               </div>
 
               {(quickCategories.length > 0 || quickLocations.length > 0) && !shouldShowLoading ? (
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid gap-3 xl:grid-cols-2">
                   {quickCategories.length > 0 ? (
                     <QuickFilterGroup
                       title="Browse by category"
@@ -389,14 +389,14 @@ export function BooksBrowse({ initialView = "all" }) {
                       ? resultLabel
                       : `${visibleCount} shown`}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">
                   {isSavedView
                     ? `${visibleCount} visible in saved view`
-                    : `${visibleCount} shown${pagination.totalPages > 1 ? ` • ${pageLabel}` : ""}`}
+                    : `${visibleCount} shown${pagination.totalPages > 1 ? ` | ${pageLabel}` : ""}`}
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 {activeFilters.map((filter) => (
                   <ActivePill
                     key={filter.key}
@@ -408,7 +408,7 @@ export function BooksBrowse({ initialView = "all" }) {
                   <button
                     type="button"
                     onClick={handleResetFilters}
-                    className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-50"
+                    className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600 transition hover:bg-slate-50 sm:px-3 sm:py-1.5 sm:text-xs"
                   >
                     Clear all
                   </button>
@@ -440,7 +440,7 @@ export function BooksBrowse({ initialView = "all" }) {
             </div>
           ) : null}
 
-          <div className="book-browse-results grid gap-3 lg:gap-4">
+          <div className="book-browse-results grid gap-3 md:gap-4">
             {displayedBooks.map((book) => (
               <BookCard key={book.id} book={book} />
             ))}
@@ -474,7 +474,7 @@ function ActivePill({ label, onClear }) {
     <button
       type="button"
       onClick={onClear}
-      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 sm:gap-2 sm:px-3 sm:py-1.5 sm:text-xs"
     >
       <span>{label}</span>
       <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-[11px] uppercase text-slate-500">
@@ -489,28 +489,28 @@ function ViewToggleButton({ isActive, label, detail, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex min-h-11 items-center gap-2 rounded-[1.1rem] border px-3 py-2.5 text-left transition ${
+      className={`inline-flex min-h-10 items-center gap-2 rounded-[1rem] border px-3 py-2 text-left transition sm:min-h-11 sm:rounded-[1.1rem] sm:py-2.5 ${
         isActive
           ? "border-slate-900 bg-slate-900 text-white shadow-sm"
           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
       }`}
     >
       <span className="text-sm font-semibold">{label}</span>
-      <span className={`hidden text-xs sm:inline ${isActive ? "text-slate-300" : "text-slate-500"}`}>{detail}</span>
+      <span className={`hidden text-xs md:inline ${isActive ? "text-slate-300" : "text-slate-500"}`}>{detail}</span>
     </button>
   );
 }
 
 function QuickFilterGroup({ title, subtitle, options, activeValue, onSelect }) {
   return (
-    <div className="rounded-[1.35rem] border border-slate-200/80 bg-white/80 p-4 shadow-sm">
+    <div className="rounded-[1.25rem] border border-slate-200/80 bg-white/80 p-3.5 shadow-sm sm:rounded-[1.35rem] sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-slate-900">{title}</p>
-          <p className="mt-1 text-xs leading-5 text-slate-500">{subtitle}</p>
+          <p className="mt-0.5 text-[11px] leading-5 text-slate-500 sm:mt-1 sm:text-xs sm:leading-5">{subtitle}</p>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-2.5 flex flex-wrap gap-1.5 sm:mt-3 sm:gap-2">
         {options.map((option) => {
           const isActive = activeValue === option;
 
@@ -519,7 +519,7 @@ function QuickFilterGroup({ title, subtitle, options, activeValue, onSelect }) {
               key={option}
               type="button"
               onClick={() => onSelect(option)}
-              className={`inline-flex items-center rounded-full border px-3.5 py-2 text-sm font-medium transition ${
+              className={`inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition sm:px-3.5 sm:py-2 ${
                 isActive
                   ? "border-teal-200 bg-teal-50 text-teal-800"
                   : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
@@ -536,11 +536,11 @@ function QuickFilterGroup({ title, subtitle, options, activeValue, onSelect }) {
 
 function LoadingState() {
   return (
-    <div className="book-browse-results grid gap-3 lg:gap-4">
+    <div className="book-browse-results grid gap-3 md:gap-4">
       {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="ui-skeleton-card p-3 sm:p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-            <div className="ui-skeleton h-36 w-full rounded-[1.2rem] sm:h-36 sm:w-28" />
+        <div key={index} className="ui-skeleton-card p-3 md:p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+            <div className="ui-skeleton h-36 w-full rounded-[1.2rem] md:h-36 md:w-28" />
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1 space-y-2">
@@ -555,7 +555,7 @@ function LoadingState() {
                 <div className="ui-skeleton-pill w-28" />
                 <div className="ui-skeleton-pill w-20" />
               </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem]">
+              <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_11rem]">
                 <div className="ui-skeleton-panel space-y-2">
                   <div className="ui-skeleton-line w-24" />
                   <div className="ui-skeleton-line w-full" />
@@ -775,3 +775,4 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
     </div>
   );
 }
+

@@ -117,7 +117,7 @@ export function MyListingsView() {
 
   return (
     <ProtectedPage>
-      <section className="my-listings-page space-y-5 sm:space-y-6">
+      <section className="my-listings-page space-y-5 md:space-y-6">
         <ToastViewport
           toasts={[
             successMessage
@@ -131,27 +131,27 @@ export function MyListingsView() {
               : null
           ]}
         />
-        <div className="ui-surface my-listings-hero overflow-hidden p-5 sm:p-7">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="ui-surface my-listings-hero overflow-hidden p-5 md:p-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
                 My Listings
               </p>
-              <h1 className="mt-2.5 text-3xl font-semibold text-slate-900 sm:mt-3 sm:text-[2.55rem]">
+              <h1 className="mt-2.5 text-3xl font-semibold text-slate-900 md:mt-3 md:text-[2.55rem]">
                 Run your shelf like a seller dashboard
               </h1>
-              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600 sm:mt-2">
+              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600 md:mt-2">
                 Review every active, reserved, rented, and sold listing in one place with quick
                 access to the owner actions you use most.
               </p>
             </div>
 
-            <Link href="/books/new" className="ui-btn-primary w-full sm:w-auto">
+            <Link href="/books/new" className="ui-btn-primary w-full md:w-auto">
               Add new book
             </Link>
           </div>
 
-          <div className="my-listings-summary mt-5 grid gap-3 md:grid-cols-3">
+          <div className="my-listings-summary mt-4 grid gap-2.5 lg:grid-cols-3">
             <SummaryTile
               label="Total listings"
               value={listingCounts.total}
@@ -172,7 +172,7 @@ export function MyListingsView() {
             />
           </div>
 
-          <div className="my-listings-note mt-5 rounded-[1.6rem] border border-emerald-200/80 bg-emerald-50/80 px-4 py-3.5 text-sm text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] sm:px-5">
+          <div className="my-listings-note mt-4 rounded-[1.5rem] border border-emerald-200/80 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] md:px-5">
             Reserved, rented, and sold books stay visible here too, so your inventory history
             remains easy to manage alongside currently available listings.
           </div>
@@ -185,7 +185,7 @@ export function MyListingsView() {
         ) : books.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="my-listings-grid grid gap-4 xl:grid-cols-2">
+          <div className="my-listings-grid grid gap-4 2xl:grid-cols-2">
             {books.map((book) => {
               const priceSummary = getListingPriceSummary(book);
               const availabilityStatus = book.availabilityStatus || "available";
@@ -196,16 +196,16 @@ export function MyListingsView() {
               return (
                 <article
                   key={book.id}
-                  className="listing-dashboard-card my-listing-card ui-card p-4 sm:p-5 xl:p-5"
+                  className="listing-dashboard-card my-listing-card ui-card p-4 md:p-5 xl:p-5"
                 >
-                  <div className="flex flex-col gap-4.5 sm:gap-5">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                  <div className="flex flex-col gap-4.5 md:gap-5">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start">
                       <div className="shrink-0">
                         <BookCover
                           src={getPrimaryBookImage(book)}
                           title={book.title}
                           ratioClassName="aspect-[4/5]"
-                          containerClassName="w-24 rounded-[1.4rem] shadow-[0_20px_44px_rgba(15,23,42,0.12)] sm:w-28"
+                          containerClassName="w-24 rounded-[1.4rem] shadow-[0_20px_44px_rgba(15,23,42,0.12)] md:w-28"
                           labelClassName="tracking-[0.2em]"
                         />
                       </div>
@@ -222,7 +222,7 @@ export function MyListingsView() {
                               {listingTypeLabel}
                             </span>
                           </div>
-                          <h2 className="mt-2 text-xl font-semibold leading-tight text-slate-900 sm:text-[1.4rem]">
+                          <h2 className="mt-2 text-xl font-semibold leading-tight text-slate-900 md:text-[1.4rem]">
                             {book.title}
                           </h2>
                           <p className="mt-1 text-sm text-slate-600">
@@ -254,10 +254,10 @@ export function MyListingsView() {
                       </div>
                     </div>
 
-                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                    <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
                       <div className="listing-dashboard-panel">
                         <p className="listing-dashboard-label">Pricing and listing info</p>
-                        <div className="mt-3.5 grid gap-3 sm:grid-cols-2">
+                        <div className="mt-3.5 grid gap-3 lg:grid-cols-2">
                           <InfoCard
                             label={priceSummary.primaryLabel}
                             value={priceSummary.primaryValue}
@@ -293,7 +293,7 @@ export function MyListingsView() {
                             type="button"
                             onClick={() => handleDelete(book.id, book.title)}
                             disabled={deletingId === book.id}
-                            className="ui-btn-danger w-full"
+                            className="ui-btn-danger-soft w-full"
                           >
                             {deletingId === book.id ? "Deleting..." : "Delete"}
                           </button>
@@ -313,12 +313,12 @@ export function MyListingsView() {
 
 function LoadingState() {
   return (
-    <div className="my-listings-grid grid gap-4 xl:grid-cols-2">
+    <div className="my-listings-grid grid gap-4 2xl:grid-cols-2">
       {Array.from({ length: 3 }).map((_, index) => (
-        <div key={index} className="listing-dashboard-card ui-card p-4 sm:p-5 xl:p-5">
+        <div key={index} className="listing-dashboard-card ui-card p-4 md:p-5 xl:p-5">
           <div className="flex flex-col gap-5">
             <div className="flex gap-4">
-              <div className="ui-skeleton h-28 w-24 rounded-[1.4rem] sm:w-28" />
+              <div className="ui-skeleton h-28 w-24 rounded-[1.4rem] md:w-28" />
               <div className="flex-1 space-y-3">
                 <div className="flex gap-2">
                   <div className="ui-skeleton-pill w-20" />
@@ -333,10 +333,10 @@ function LoadingState() {
               </div>
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
               <div className="listing-dashboard-panel space-y-3">
                 <div className="ui-skeleton-line w-36" />
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 lg:grid-cols-2">
                   {Array.from({ length: 4 }).map((__, infoIndex) => (
                     <div key={infoIndex} className="ui-skeleton h-20 rounded-[1.1rem]" />
                   ))}
@@ -360,15 +360,15 @@ function LoadingState() {
 function EmptyState() {
   return (
     <div className="request-empty-state my-listings-empty-state">
-      <div className="grid gap-0 lg:grid-cols-[1.12fr_0.88fr]">
+      <div className="grid gap-0 xl:grid-cols-[1.12fr_0.88fr]">
         <div className="request-empty-main my-listings-empty-main">
           <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
             My Listings
           </p>
-          <h2 className="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">
+          <h2 className="mt-3 text-2xl font-semibold text-slate-900 md:text-3xl">
             Your seller dashboard is ready for its first book
           </h2>
-          <p className="mt-2.5 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
+          <p className="mt-2.5 max-w-xl text-sm leading-7 text-slate-600 md:text-base">
             Add your first listing to start sharing books, receiving reader requests, and building
             a shelf you can manage from one organized workspace.
           </p>
@@ -414,8 +414,8 @@ function SummaryTile({ label, value, detail, tone = "slate" }) {
       <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
         {label}
       </p>
-      <p className="mt-2.5 text-3xl font-semibold sm:text-[2.05rem]">{value}</p>
-      <p className="mt-1.5 text-sm leading-6 text-slate-600">{detail}</p>
+      <p className="mt-2 text-[1.9rem] font-semibold md:text-[2rem]">{value}</p>
+      <p className="mt-1 text-sm leading-5.5 text-slate-600">{detail}</p>
     </div>
   );
 }

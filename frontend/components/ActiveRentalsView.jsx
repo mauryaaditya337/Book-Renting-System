@@ -146,7 +146,7 @@ export function ActiveRentalsView({ mode }) {
 
   return (
     <ProtectedPage>
-      <section className="space-y-6">
+      <section className="space-y-5 md:space-y-6">
         <ToastViewport
           toasts={[
             actionMessage
@@ -169,16 +169,16 @@ export function ActiveRentalsView({ mode }) {
               : null
           ]}
         />
-        <div className="ui-surface p-6 sm:p-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="request-page-hero ui-surface p-5 sm:p-6 lg:p-8">
+          <div className="request-page-toolbar flex flex-col gap-3.5 lg:flex-row lg:justify-between">
             <div>
-              <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
+              <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-teal-700">
                 {config.eyebrow}
               </p>
-              <h1 className="mt-3 text-3xl font-semibold text-slate-900 sm:text-4xl">
+              <h1 className="mt-2 text-[1.85rem] font-semibold text-slate-900 sm:text-[2.25rem]">
                 {config.title}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                 {config.description}
               </p>
             </div>
@@ -196,8 +196,8 @@ export function ActiveRentalsView({ mode }) {
         ) : requests.length === 0 ? (
           <EmptyState config={config} />
         ) : (
-          <div className="space-y-4">
-            <div className="grid gap-4">
+          <div className="space-y-4 md:space-y-5">
+            <div className="grid gap-3.5 md:gap-4">
               {requests.map((request) => {
                 const isSubmitting = activeRequestId === request.id;
                 const canAct =
@@ -214,25 +214,25 @@ export function ActiveRentalsView({ mode }) {
                 const dueTone = getDueTone(dueState.level);
 
                 return (
-                  <article key={request.id} className="request-card ui-card p-4 sm:p-5 xl:p-6">
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-                      <div className="flex min-w-0 gap-4 xl:min-w-0 xl:flex-[1.05]">
+                  <article key={request.id} className="request-card ui-card p-3.5 sm:p-4 lg:p-5 xl:p-6">
+                    <div className="request-card-layout">
+                      <div className="request-card-main xl:min-w-0 xl:flex-[1.05]">
                         <BookCover
                           src={getPrimaryBookImage(request.book)}
                           title={request.book?.title}
                           ratioClassName="aspect-[4/5]"
-                          containerClassName="w-24 shrink-0 rounded-[1.4rem] shadow-[0_20px_44px_rgba(15,23,42,0.12)] sm:w-28"
+                          containerClassName="request-card-cover"
                           labelClassName="tracking-[0.2em]"
                         />
-                        <div className="min-w-0 space-y-4">
+                        <div className="request-card-identity">
                           <div>
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="request-card-badges">
                               {request.book?.category ? (
                                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-700">
                                   {request.book?.category}
                                 </p>
                               ) : null}
-                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                              <span className="request-card-type-pill">
                                 {mode === "renter" ? "Live rental" : "Managed rental"}
                               </span>
                             </div>
@@ -244,7 +244,7 @@ export function ActiveRentalsView({ mode }) {
                             </p>
                           </div>
 
-                          <div className="rounded-[1.35rem] border border-slate-200/80 bg-white/80 p-4 shadow-sm">
+                          <div className="request-note-panel">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                               <div>
                                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -261,7 +261,7 @@ export function ActiveRentalsView({ mode }) {
                               </span>
                             </div>
 
-                            <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                               {timelineSteps.map((step, index) => (
                                 <LifecycleStep
                                   key={step.key}
@@ -274,7 +274,7 @@ export function ActiveRentalsView({ mode }) {
                         </div>
                       </div>
 
-                      <div className="grid gap-3 sm:grid-cols-2 xl:min-w-0 xl:flex-1 xl:grid-cols-2">
+                      <div className="request-card-meta xl:min-w-0 xl:flex-1">
                         <InfoRow label={config.primaryLabel} value={getCounterpartyName(mode, request)} />
                         <InfoRow
                           label="Rental dates"
@@ -295,7 +295,7 @@ export function ActiveRentalsView({ mode }) {
                         />
                       </div>
 
-                      <div className="request-card__aside ui-subtle-card p-4 sm:p-5 xl:w-[18rem] xl:shrink-0">
+                      <div className="request-card__aside request-card-aside ui-subtle-card">
                         <div className="flex flex-col gap-4">
                           <div className="space-y-3">
                             <div className={`rental-status-panel ${dueTone}`}>
@@ -307,18 +307,18 @@ export function ActiveRentalsView({ mode }) {
                                 Ends on {formatRequestDate(request.endDate)}.
                               </p>
                             </div>
-                            <div className="ui-trust-card">
+                            <div className="request-note-panel">
                               <p className="ui-trust-label">Lifecycle clarity</p>
                               <p className="ui-trust-copy">{lifecycleNote}</p>
                             </div>
-                            <div className="ui-trust-card">
+                            <div className="request-note-panel">
                               <p className="ui-trust-label">Expected next action</p>
                               <p className="ui-trust-copy">{nextStepLabel.detail}</p>
                             </div>
                           </div>
 
                           <div className="request-card__actions border-t border-slate-200/80 pt-4">
-                            <div className="flex flex-col gap-3">
+                              <div className="request-action-stack">
                               <Link href={`/books/${request.book?.id}`} className="ui-btn-secondary w-full px-4 py-2">
                                 View book
                               </Link>
@@ -333,7 +333,7 @@ export function ActiveRentalsView({ mode }) {
                                   {isSubmitting ? "Updating..." : config.actionLabel}
                                 </button>
                               ) : (
-                                <div className="rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm font-medium text-slate-600 shadow-sm">
+                                <div className="request-static-action border-slate-200/80 bg-white/80 text-slate-600">
                                   {nextStepLabel.title}
                                 </div>
                               )}
@@ -385,8 +385,8 @@ function getCounterpartyName(mode, request) {
 
 function InfoRow({ label, value, meta, toneClassName = "" }) {
   return (
-    <div className={`request-info-card rounded-2xl px-4 py-3 ${toneClassName}`}>
-      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{label}</p>
+    <div className={`request-info-card ${toneClassName}`}>
+      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{label}</p>
       <p className="mt-1 font-medium text-slate-800">{value || "Not available"}</p>
       {meta ? <p className="mt-1 text-xs leading-5 text-slate-500">{meta}</p> : null}
     </div>
@@ -395,7 +395,7 @@ function InfoRow({ label, value, meta, toneClassName = "" }) {
 
 function LoadingState() {
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3.5 md:gap-4">
       {Array.from({ length: 3 }).map((_, index) => (
         <RentalLoadingCard key={index} />
       ))}
@@ -659,10 +659,10 @@ function getNextStepLabel(mode, request, canAct, actionLabel) {
 
 function RentalLoadingCard() {
   return (
-    <div className="request-card ui-card p-4 sm:p-5 xl:p-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-        <div className="flex min-w-0 gap-4 xl:flex-[1.05]">
-          <div className="ui-skeleton h-28 w-24 rounded-[1.4rem] sm:w-28" />
+    <div className="request-card ui-card p-3.5 sm:p-4 lg:p-5 xl:p-6">
+      <div className="request-card-layout">
+        <div className="request-card-main xl:flex-[1.05]">
+          <div className="ui-skeleton request-card-cover aspect-[4/5]" />
           <div className="min-w-0 flex-1 space-y-4">
             <div className="space-y-3">
               <div className="flex gap-2">
@@ -675,13 +675,13 @@ function RentalLoadingCard() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:flex-1 xl:grid-cols-2">
+        <div className="request-card-meta xl:flex-1">
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="ui-skeleton h-20 rounded-2xl" />
           ))}
         </div>
 
-        <div className="request-card__aside ui-subtle-card p-4 sm:p-5 xl:w-[18rem] xl:shrink-0">
+        <div className="request-card__aside request-card-aside ui-subtle-card">
           <div className="space-y-3">
             <div className="ui-skeleton-pill w-24" />
             <div className="ui-skeleton-line w-full" />
