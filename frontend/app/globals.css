@@ -1323,3 +1323,9 @@ body {
 .book-browse-map .leaflet-popup-content {
   margin: 0.9rem 1rem;
 }
+
+.map-coordinate-picker .leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+}

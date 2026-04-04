@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -10,6 +11,13 @@ import { useAuth } from "@/components/AuthProvider";
 import { ToastViewport } from "@/components/ToastViewport";
 import { apiRequest } from "@/lib/api";
 import { requestBrowserLocation } from "@/lib/location";
+
+const MapCoordinatePicker = dynamic(
+  () => import("@/components/MapCoordinatePicker").then((module) => module.MapCoordinatePicker),
+  {
+    ssr: false
+  }
+);
 
 const MAX_IMAGE_FIELDS = 3;
 const ADD_BOOK_DRAFT_KEY = "addBookDraft";
@@ -183,6 +191,7 @@ export function AddBookForm() {
   const [hasHydratedDraft, setHasHydratedDraft] = useState(false);
   const [draftRestoredMessage, setDraftRestoredMessage] = useState("");
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
 
   const resetLookupMessages = () => {
     setLookupError("");
@@ -231,6 +240,20 @@ export function AddBookForm() {
     } finally {
       setIsDetectingLocation(false);
     }
+  };
+
+  const handleMapPick = ({ lat, lng }) => {
+    setFormData((current) => ({
+      ...current,
+      latitude: lat.toFixed(6),
+      longitude: lng.toFixed(6)
+    }));
+    setFieldErrors((current) => ({
+      ...current,
+      latitude: "",
+      longitude: ""
+    }));
+    setFormError("");
   };
 
   const handleListingTypeChange = (nextListingType) => {
@@ -836,17 +859,36 @@ export function AddBookForm() {
                         <p className="text-sm font-semibold text-slate-900">Pickup coordinates</p>
                         <p className="mt-1 text-sm leading-6 text-slate-600">
                           Add a pickup label and coordinates so nearby readers can see distance.
+                          You can use your current location, click on the map, or enter them manually.
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleUseCurrentLocation}
-                        disabled={isDetectingLocation}
-                        className="ui-btn-secondary w-full md:w-auto"
-                      >
-                        {isDetectingLocation ? "Detecting..." : "Use My Current Location"}
-                      </button>
+                      <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
+                        <button
+                          type="button"
+                          onClick={() => setIsMapPickerOpen((current) => !current)}
+                          className="ui-btn-secondary w-full md:w-auto"
+                        >
+                          {isMapPickerOpen ? "Hide Map Picker" : "Pick on Map"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleUseCurrentLocation}
+                          disabled={isDetectingLocation}
+                          className="ui-btn-secondary w-full md:w-auto"
+                        >
+                          {isDetectingLocation ? "Detecting..." : "Use My Current Location"}
+                        </button>
+                      </div>
                     </div>
+                    {isMapPickerOpen ? (
+                      <div className="mt-4">
+                        <MapCoordinatePicker
+                          latitude={formData.latitude}
+                          longitude={formData.longitude}
+                          onPick={handleMapPick}
+                        />
+                      </div>
+                    ) : null}
                     <div className="mt-4 grid gap-5 md:grid-cols-3">
                       <InputField
                         label="Pickup Location Name"
@@ -877,6 +919,9 @@ export function AddBookForm() {
                         step="any"
                       />
                     </div>
+                    <p className="mt-3 text-sm text-slate-500">
+                      Manual latitude and longitude entry still works even if you also use the map picker.
+                    </p>
                   </div>
                 </FormSection>
 
