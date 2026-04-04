@@ -8,6 +8,8 @@ import { ToastViewport } from "@/components/ToastViewport";
 import { useAuth } from "@/components/AuthProvider";
 import { BookCover } from "@/components/BookCover";
 import { apiRequest } from "@/lib/api";
+import { canOpenChat, getChatHref } from "@/lib/chats";
+import { buildWhatsAppUrl, canUseWhatsApp } from "@/lib/contact";
 import { getPrimaryBookImage, hydrateRequestBookImages, mergeRequestWithBookImage } from "@/lib/bookImages";
 import { formatRequestDate, getRequestStatusTone, toRequestStatusLabel } from "@/lib/rentalRequests";
 
@@ -212,6 +214,13 @@ export function ActiveRentalsView({ mode }) {
                 const nextStepLabel = getNextStepLabel(mode, request, canAct, config.actionLabel);
                 const dueSummary = getDueSummary(request, dueState);
                 const dueTone = getDueTone(dueState.level);
+                const contactPhoneNumber =
+                  mode === "owner" ? request.renter?.phoneNumber || "" : request.owner?.phoneNumber || "";
+                const whatsappUrl = buildWhatsAppUrl(
+                  contactPhoneNumber,
+                  request.book?.title || "this rental"
+                );
+                const canContactOnWhatsapp = canOpenChat(request) && canUseWhatsApp(contactPhoneNumber);
 
                 return (
                   <article key={request.id} className="request-card ui-card p-3.5 sm:p-4 lg:p-5 xl:p-6">
@@ -322,6 +331,26 @@ export function ActiveRentalsView({ mode }) {
                               <Link href={`/books/${request.book?.id}`} className="ui-btn-secondary w-full px-4 py-2">
                                 View book
                               </Link>
+                              {canOpenChat(request) ? (
+                                <>
+                                  <Link href={getChatHref(request)} className="ui-btn-primary w-full px-4 py-2">
+                                    Open Chat
+                                  </Link>
+                                  <p className="px-1 text-xs leading-5 text-slate-500">
+                                    Use in-app chat for coordination.
+                                  </p>
+                                </>
+                              ) : null}
+                              {canContactOnWhatsapp ? (
+                                <a
+                                  href={whatsappUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="ui-btn-secondary w-full px-4 py-2 text-sm"
+                                >
+                                  WhatsApp
+                                </a>
+                              ) : null}
 
                               {canAct && config.actionVerb ? (
                                 <button

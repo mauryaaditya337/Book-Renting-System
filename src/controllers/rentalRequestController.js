@@ -1,9 +1,12 @@
 const Book = require("../models/Book");
+const ChatThread = require("../models/ChatThread");
 const RentalRequest = require("../models/RentalRequest");
 const validateRequest = require("../utils/validateRequest");
 const asyncHandler = require("../middleware/asyncHandler");
 const createNotification = require("../utils/createNotification");
 const { calculateRentalPricing } = require("../utils/rentalPricing");
+
+const CHAT_ENABLED_REQUEST_STATUSES = ["approved", "active", "return_pending"];
 
 const normalizeDate = (value) => {
   const date = new Date(value);
@@ -38,6 +41,24 @@ const getRentalPricingSnapshot = (rentalRequest) => {
   };
 };
 
+const formatBookSummary = (book) => ({
+  id: book?._id || "",
+  title: book?.title || "Book unavailable",
+  author: book?.author || "",
+  category: book?.category || "",
+  listingType: book?.listingType || "rent",
+  rentalPrice: book?.rentalPrice ?? 0,
+  salePrice: typeof book?.salePrice === "number" ? book.salePrice : null,
+  securityDeposit: book?.securityDeposit ?? null
+});
+
+const formatUserSummary = (user, { includeFullName = false, includePhoneNumber = false } = {}) => ({
+  id: user?._id || "",
+  name: user?.name || user?.fullName || "Unknown user",
+  ...(includeFullName ? { fullName: user?.fullName || user?.name || "" } : {}),
+  ...(includePhoneNumber ? { phoneNumber: user?.phoneNumber || user?.phone || "" } : {})
+});
+
 const formatRentalRequestResponse = (rentalRequest) => ({
   ...getRentalPricingSnapshot(rentalRequest),
   id: rentalRequest._id,
@@ -45,27 +66,9 @@ const formatRentalRequestResponse = (rentalRequest) => ({
   rejectionReason: rentalRequest.rejectionReason || "",
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
-  book: {
-    id: rentalRequest.book._id,
-    title: rentalRequest.book.title,
-    author: rentalRequest.book.author,
-    category: rentalRequest.book.category,
-    listingType: rentalRequest.book.listingType || "rent",
-    rentalPrice: rentalRequest.book.rentalPrice,
-    salePrice:
-      typeof rentalRequest.book.salePrice === "number" ? rentalRequest.book.salePrice : null,
-    securityDeposit: rentalRequest.book.securityDeposit
-  },
-  owner: {
-    id: rentalRequest.owner._id,
-    name: rentalRequest.owner.name,
-    fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
-    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || ""
-  },
-  renter: {
-    id: rentalRequest.renter._id,
-    name: rentalRequest.renter.name
-  },
+  book: formatBookSummary(rentalRequest.book),
+  owner: formatUserSummary(rentalRequest.owner, { includeFullName: true, includePhoneNumber: true }),
+  renter: formatUserSummary(rentalRequest.renter),
   createdAt: rentalRequest.createdAt,
   updatedAt: rentalRequest.updatedAt
 });
@@ -77,22 +80,8 @@ const formatRentalRequestActionResponse = (rentalRequest) => ({
   rejectionReason: rentalRequest.rejectionReason || "",
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
-  book: {
-    id: rentalRequest.book._id,
-    title: rentalRequest.book.title,
-    author: rentalRequest.book.author,
-    category: rentalRequest.book.category,
-    listingType: rentalRequest.book.listingType || "rent",
-    rentalPrice: rentalRequest.book.rentalPrice,
-    salePrice:
-      typeof rentalRequest.book.salePrice === "number" ? rentalRequest.book.salePrice : null,
-    securityDeposit: rentalRequest.book.securityDeposit
-  },
-  renter: {
-    id: rentalRequest.renter._id,
-    name: rentalRequest.renter.name,
-    phoneNumber: rentalRequest.renter.phoneNumber || rentalRequest.renter.phone || ""
-  },
+  book: formatBookSummary(rentalRequest.book),
+  renter: formatUserSummary(rentalRequest.renter, { includePhoneNumber: true }),
   createdAt: rentalRequest.createdAt,
   updatedAt: rentalRequest.updatedAt
 });
@@ -104,23 +93,8 @@ const formatRentalRequestRenterActionResponse = (rentalRequest) => ({
   rejectionReason: rentalRequest.rejectionReason || "",
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
-  book: {
-    id: rentalRequest.book._id,
-    title: rentalRequest.book.title,
-    author: rentalRequest.book.author,
-    category: rentalRequest.book.category,
-    listingType: rentalRequest.book.listingType || "rent",
-    rentalPrice: rentalRequest.book.rentalPrice,
-    salePrice:
-      typeof rentalRequest.book.salePrice === "number" ? rentalRequest.book.salePrice : null,
-    securityDeposit: rentalRequest.book.securityDeposit
-  },
-  owner: {
-    id: rentalRequest.owner._id,
-    name: rentalRequest.owner.name,
-    fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
-    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || ""
-  },
+  book: formatBookSummary(rentalRequest.book),
+  owner: formatUserSummary(rentalRequest.owner, { includeFullName: true, includePhoneNumber: true }),
   createdAt: rentalRequest.createdAt,
   updatedAt: rentalRequest.updatedAt
 });
@@ -133,22 +107,8 @@ const formatOwnerActiveRentalResponse = (rentalRequest) => ({
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
   createdAt: rentalRequest.createdAt,
-  book: {
-    id: rentalRequest.book._id,
-    title: rentalRequest.book.title,
-    author: rentalRequest.book.author,
-    category: rentalRequest.book.category,
-    listingType: rentalRequest.book.listingType || "rent",
-    rentalPrice: rentalRequest.book.rentalPrice,
-    salePrice:
-      typeof rentalRequest.book.salePrice === "number" ? rentalRequest.book.salePrice : null,
-    securityDeposit: rentalRequest.book.securityDeposit
-  },
-  renter: {
-    id: rentalRequest.renter._id,
-    name: rentalRequest.renter.name,
-    phoneNumber: rentalRequest.renter.phoneNumber || rentalRequest.renter.phone || ""
-  }
+  book: formatBookSummary(rentalRequest.book),
+  renter: formatUserSummary(rentalRequest.renter, { includePhoneNumber: true })
 });
 
 const formatRenterActiveRentalResponse = (rentalRequest) => ({
@@ -159,23 +119,8 @@ const formatRenterActiveRentalResponse = (rentalRequest) => ({
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
   createdAt: rentalRequest.createdAt,
-  book: {
-    id: rentalRequest.book._id,
-    title: rentalRequest.book.title,
-    author: rentalRequest.book.author,
-    category: rentalRequest.book.category,
-    listingType: rentalRequest.book.listingType || "rent",
-    rentalPrice: rentalRequest.book.rentalPrice,
-    salePrice:
-      typeof rentalRequest.book.salePrice === "number" ? rentalRequest.book.salePrice : null,
-    securityDeposit: rentalRequest.book.securityDeposit
-  },
-  owner: {
-    id: rentalRequest.owner._id,
-    name: rentalRequest.owner.name,
-    fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
-    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || ""
-  }
+  book: formatBookSummary(rentalRequest.book),
+  owner: formatUserSummary(rentalRequest.owner, { includeFullName: true, includePhoneNumber: true })
 });
 
 const formatIncomingRentalRequestListItem = (rentalRequest) => ({
@@ -186,22 +131,8 @@ const formatIncomingRentalRequestListItem = (rentalRequest) => ({
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
   createdAt: rentalRequest.createdAt,
-  book: {
-    id: rentalRequest.book._id,
-    title: rentalRequest.book.title,
-    author: rentalRequest.book.author,
-    category: rentalRequest.book.category,
-    listingType: rentalRequest.book.listingType || "rent",
-    rentalPrice: rentalRequest.book.rentalPrice,
-    salePrice:
-      typeof rentalRequest.book.salePrice === "number" ? rentalRequest.book.salePrice : null,
-    securityDeposit: rentalRequest.book.securityDeposit
-  },
-  renter: {
-    id: rentalRequest.renter._id,
-    name: rentalRequest.renter.name,
-    phoneNumber: rentalRequest.renter.phoneNumber || rentalRequest.renter.phone || ""
-  }
+  book: formatBookSummary(rentalRequest.book),
+  renter: formatUserSummary(rentalRequest.renter, { includePhoneNumber: true })
 });
 
 const formatOutgoingRentalRequestListItem = (rentalRequest) => ({
@@ -212,23 +143,8 @@ const formatOutgoingRentalRequestListItem = (rentalRequest) => ({
   startDate: rentalRequest.startDate,
   endDate: rentalRequest.endDate,
   createdAt: rentalRequest.createdAt,
-  book: {
-    id: rentalRequest.book._id,
-    title: rentalRequest.book.title,
-    author: rentalRequest.book.author,
-    category: rentalRequest.book.category,
-    listingType: rentalRequest.book.listingType || "rent",
-    rentalPrice: rentalRequest.book.rentalPrice,
-    salePrice:
-      typeof rentalRequest.book.salePrice === "number" ? rentalRequest.book.salePrice : null,
-    securityDeposit: rentalRequest.book.securityDeposit
-  },
-  owner: {
-    id: rentalRequest.owner._id,
-    name: rentalRequest.owner.name,
-    fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
-    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || ""
-  }
+  book: formatBookSummary(rentalRequest.book),
+  owner: formatUserSummary(rentalRequest.owner, { includeFullName: true, includePhoneNumber: true })
 });
 
 const formatOwnBookRentalRequestResponse = (rentalRequest) => ({
@@ -241,15 +157,10 @@ const formatOwnBookRentalRequestResponse = (rentalRequest) => ({
   createdAt: rentalRequest.createdAt,
   updatedAt: rentalRequest.updatedAt,
   book: {
-    id: rentalRequest.book._id,
-    title: rentalRequest.book.title
+    id: rentalRequest.book?._id || "",
+    title: rentalRequest.book?.title || "Book unavailable"
   },
-  owner: {
-    id: rentalRequest.owner._id,
-    name: rentalRequest.owner.name,
-    fullName: rentalRequest.owner.fullName || rentalRequest.owner.name || "",
-    phoneNumber: rentalRequest.owner.phoneNumber || rentalRequest.owner.phone || ""
-  }
+  owner: formatUserSummary(rentalRequest.owner, { includeFullName: true, includePhoneNumber: true })
 });
 
 const buildRentalRequestListMeta = (page, limit, totalRequests) => ({
@@ -257,6 +168,81 @@ const buildRentalRequestListMeta = (page, limit, totalRequests) => ({
   currentPage: page,
   totalPages: Math.max(1, Math.ceil(totalRequests / limit))
 });
+
+const canUseChatForStatus = (status) => CHAT_ENABLED_REQUEST_STATUSES.includes(status);
+
+const ensureChatThreadForRequest = async (rentalRequest) => {
+  if (
+    !rentalRequest ||
+    !canUseChatForStatus(rentalRequest.status) ||
+    !(rentalRequest.book?._id || rentalRequest.book) ||
+    !(rentalRequest.owner?._id || rentalRequest.owner) ||
+    !(rentalRequest.renter?._id || rentalRequest.renter)
+  ) {
+    return null;
+  }
+
+  return ChatThread.findOneAndUpdate(
+    {
+      requestId: rentalRequest._id
+    },
+    {
+      $setOnInsert: {
+        requestId: rentalRequest._id,
+        bookId: rentalRequest.book?._id || rentalRequest.book,
+        ownerId: rentalRequest.owner?._id || rentalRequest.owner,
+        requesterId: rentalRequest.renter?._id || rentalRequest.renter
+      },
+      $set: {
+        isOpen: true
+      }
+    },
+    {
+      new: true,
+      upsert: true,
+      setDefaultsOnInsert: true
+    }
+  );
+};
+
+const closeChatThreadForRequest = async (requestId) => {
+  await ChatThread.findOneAndUpdate(
+    {
+      requestId
+    },
+    {
+      $set: {
+        isOpen: false
+      }
+    }
+  );
+};
+
+const attachChatMetadataToRequest = async (payload, rentalRequest) => {
+  const thread = await ensureChatThreadForRequest(rentalRequest);
+
+  return {
+    ...payload,
+    chat: {
+      isAvailable: Boolean(thread),
+      threadId: thread?._id ? String(thread._id) : ""
+    }
+  };
+};
+
+const attachChatMetadataToRequests = async (payloads, rentalRequests) => {
+  const threads = await Promise.all(
+    rentalRequests.map((rentalRequest) => ensureChatThreadForRequest(rentalRequest))
+  );
+
+  return payloads.map((payload, index) => ({
+    ...payload,
+    chat: {
+      isAvailable: Boolean(threads[index]),
+      threadId: threads[index]?._id ? String(threads[index]._id) : ""
+    }
+  }));
+};
 
 const ownerActiveRentalStatuses = ["approved", "active", "return_pending"];
 const renterActiveRentalStatuses = ["active", "return_pending"];
@@ -342,9 +328,14 @@ const approveRentalRequest = asyncHandler(async (req, res) => {
     .populate("book", "title author category listingType rentalPrice salePrice securityDeposit")
     .populate("renter", "name phoneNumber phone");
 
+  const responsePayload = await attachChatMetadataToRequest(
+    formatRentalRequestActionResponse(updatedRentalRequest),
+    updatedRentalRequest
+  );
+
   res.status(200).json({
     message: "Rental request approved successfully",
-    rentalRequest: formatRentalRequestActionResponse(updatedRentalRequest)
+    rentalRequest: responsePayload
   });
 });
 
@@ -381,6 +372,8 @@ const rejectRentalRequest = asyncHandler(async (req, res) => {
   const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
     .populate("book", "title author category listingType rentalPrice salePrice securityDeposit")
     .populate("renter", "name phoneNumber phone");
+
+  await closeChatThreadForRequest(updatedRentalRequest._id);
 
   res.status(200).json({
     message: "Rental request rejected successfully",
@@ -428,9 +421,14 @@ const startRentalRequest = asyncHandler(async (req, res) => {
     .populate("book", "title author category listingType rentalPrice salePrice securityDeposit")
     .populate("owner", "fullName name phoneNumber phone");
 
+  const responsePayload = await attachChatMetadataToRequest(
+    formatRentalRequestRenterActionResponse(updatedRentalRequest),
+    updatedRentalRequest
+  );
+
   res.status(200).json({
     message: "Rental started successfully",
-    rentalRequest: formatRentalRequestRenterActionResponse(updatedRentalRequest)
+    rentalRequest: responsePayload
   });
 });
 
@@ -471,9 +469,14 @@ const initiateRentalReturn = asyncHandler(async (req, res) => {
     .populate("book", "title author category listingType rentalPrice salePrice securityDeposit")
     .populate("owner", "fullName name phoneNumber phone");
 
+  const responsePayload = await attachChatMetadataToRequest(
+    formatRentalRequestRenterActionResponse(updatedRentalRequest),
+    updatedRentalRequest
+  );
+
   res.status(200).json({
     message: "Return initiated successfully",
-    rentalRequest: formatRentalRequestRenterActionResponse(updatedRentalRequest)
+    rentalRequest: responsePayload
   });
 });
 
@@ -518,6 +521,8 @@ const confirmRentalReturn = asyncHandler(async (req, res) => {
     .populate("book", "title author category listingType rentalPrice salePrice securityDeposit")
     .populate("renter", "name phoneNumber phone");
 
+  await closeChatThreadForRequest(updatedRentalRequest._id);
+
   res.status(200).json({
     message: "Return confirmed successfully",
     rentalRequest: formatRentalRequestActionResponse(updatedRentalRequest)
@@ -550,9 +555,13 @@ const getIncomingRentalRequests = asyncHandler(async (req, res) => {
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalRequests / limit));
+  const responsePayload = await attachChatMetadataToRequests(
+    requests.map(formatIncomingRentalRequestListItem),
+    requests
+  );
 
   res.status(200).json({
-    requests: requests.map(formatIncomingRentalRequestListItem),
+    requests: responsePayload,
     totalRequests,
     currentPage: page,
     totalPages
@@ -585,9 +594,13 @@ const getOutgoingRentalRequests = asyncHandler(async (req, res) => {
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalRequests / limit));
+  const responsePayload = await attachChatMetadataToRequests(
+    requests.map(formatOutgoingRentalRequestListItem),
+    requests
+  );
 
   res.status(200).json({
-    requests: requests.map(formatOutgoingRentalRequestListItem),
+    requests: responsePayload,
     totalRequests,
     currentPage: page,
     totalPages
@@ -620,8 +633,13 @@ const getOwnerActiveRentalRequests = asyncHandler(async (req, res) => {
     RentalRequest.countDocuments(filters)
   ]);
 
+  const responsePayload = await attachChatMetadataToRequests(
+    requests.map(formatOwnerActiveRentalResponse),
+    requests
+  );
+
   res.status(200).json({
-    requests: requests.map(formatOwnerActiveRentalResponse),
+    requests: responsePayload,
     ...buildRentalRequestListMeta(page, limit, totalRequests)
   });
 });
@@ -652,8 +670,13 @@ const getRenterActiveRentalRequests = asyncHandler(async (req, res) => {
     RentalRequest.countDocuments(filters)
   ]);
 
+  const responsePayload = await attachChatMetadataToRequests(
+    requests.map(formatRenterActiveRentalResponse),
+    requests
+  );
+
   res.status(200).json({
-    requests: requests.map(formatRenterActiveRentalResponse),
+    requests: responsePayload,
     ...buildRentalRequestListMeta(page, limit, totalRequests)
   });
 });
@@ -670,8 +693,15 @@ const getOwnRentalRequestForBook = asyncHandler(async (req, res) => {
     .populate("owner", "fullName name phoneNumber phone")
     .sort({ createdAt: -1 });
 
+  const responsePayload = rentalRequest
+    ? await attachChatMetadataToRequest(
+        formatOwnBookRentalRequestResponse(rentalRequest),
+        rentalRequest
+      )
+    : null;
+
   res.status(200).json({
-    rentalRequest: rentalRequest ? formatOwnBookRentalRequestResponse(rentalRequest) : null
+    rentalRequest: responsePayload
   });
 });
 
@@ -742,7 +772,10 @@ const createRentalRequest = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     message: "Rental request created successfully",
-    rentalRequest: formatRentalRequestResponse(populatedRentalRequest)
+    rentalRequest: await attachChatMetadataToRequest(
+      formatRentalRequestResponse(populatedRentalRequest),
+      populatedRentalRequest
+    )
   });
 });
 

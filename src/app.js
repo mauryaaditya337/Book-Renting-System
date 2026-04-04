@@ -9,6 +9,7 @@ const bookRequestRoutes = require("./routes/bookRequestRoutes");
 const feedbackRoutes = require("./routes/feedbackRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -28,6 +29,7 @@ app.use("/api/book-requests", bookRequestRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/chats", chatRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

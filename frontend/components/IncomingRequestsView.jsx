@@ -14,6 +14,8 @@ import {
   hydrateRequestBookImages,
   mergeRequestWithBookImage
 } from "@/lib/bookImages";
+import { canOpenChat, getChatHref } from "@/lib/chats";
+import { buildWhatsAppUrl, canUseWhatsApp } from "@/lib/contact";
 import {
   formatRequestDate,
   formatRequestDateTime,
@@ -33,21 +35,6 @@ const STATUS_FILTERS = [
   { value: "rejected", label: "Rejected" },
   { value: "completed", label: "Completed" }
 ];
-
-function normalizeWhatsAppPhoneNumber(phoneNumber = "") {
-  return String(phoneNumber).replace(/[^\d]/g, "");
-}
-
-function buildWhatsAppUrl(phoneNumber, bookTitle) {
-  const normalizedPhoneNumber = normalizeWhatsAppPhoneNumber(phoneNumber);
-
-  if (!normalizedPhoneNumber) {
-    return "";
-  }
-
-  const message = encodeURIComponent(`Hi, your request was approved for: ${bookTitle}`);
-  return `https://wa.me/${normalizedPhoneNumber}?text=${message}`;
-}
 
 export function IncomingRequestsView() {
   const { token } = useAuth();
@@ -382,9 +369,18 @@ function RequestGrid({
   handleRejectSubmit,
   handleRejectCancel
 }) {
+  const safeRequests = requests.filter((request) => {
+    if (!request?.book) {
+      console.warn("Missing book in request:", request?.id || request?._id);
+      return false;
+    }
+
+    return true;
+  });
+
   return (
     <div className="grid gap-3.5 md:gap-4">
-      {requests.map((request) => {
+      {safeRequests.map((request) => {
         const isPending = request.status === "pending";
         const isReturnPending = request.status === "return_pending";
         const isApproved = request.status === "approved";
@@ -392,8 +388,7 @@ function RequestGrid({
         const isRejectingThisRequest = rejectingRequestId === request.id;
         const renterPhoneNumber = request.renter?.phoneNumber || "";
         const whatsappUrl = buildWhatsAppUrl(renterPhoneNumber, request.book?.title || "your book");
-        const canContactOnWhatsapp =
-          isApproved && normalizeWhatsAppPhoneNumber(renterPhoneNumber).length >= 7;
+        const canContactOnWhatsapp = canOpenChat(request) && canUseWhatsApp(renterPhoneNumber);
         const pricingDetails = getRequestPricingDetails(request);
         const statusLabel = toRequestStatusLabel(request.status);
         const statusTone = getRequestStatusTone(request.status);
@@ -483,6 +478,16 @@ function RequestGrid({
                       <Link href={`/books/${request.book?.id}`} className="ui-btn-secondary w-full px-4 py-2">
                         View book
                       </Link>
+                      {canOpenChat(request) ? (
+                        <>
+                          <Link href={getChatHref(request)} className="ui-btn-primary w-full px-4 py-2">
+                            Open Chat
+                          </Link>
+                          <p className="px-1 text-xs leading-5 text-slate-500">
+                            Use in-app chat for coordination.
+                          </p>
+                        </>
+                      ) : null}
 
                       {isPending ? (
                         <>
@@ -519,9 +524,9 @@ function RequestGrid({
                           href={whatsappUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="ui-btn-success w-full px-4 py-2"
+                          className="ui-btn-secondary w-full px-4 py-2 text-sm"
                         >
-                          Contact on WhatsApp
+                          WhatsApp
                         </a>
                       ) : null}
                     </div>

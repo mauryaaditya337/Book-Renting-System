@@ -7,7 +7,7 @@ const formatNotification = (notification) => ({
   type: notification.type,
   message: notification.message,
   isRead: notification.isRead,
-  relatedId: notification.relatedId,
+  relatedId: notification.relatedId ? String(notification.relatedId) : "",
   createdAt: notification.createdAt
 });
 

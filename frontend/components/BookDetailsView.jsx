@@ -10,6 +10,8 @@ import { SavedBookButton } from "@/components/SavedBookButton";
 import { apiRequest } from "@/lib/api";
 import { saveCurrentLocationForLoginRedirect } from "@/lib/authRedirect";
 import { getBookImages } from "@/lib/bookImages";
+import { canOpenChat, getChatHref } from "@/lib/chats";
+import { buildWhatsAppUrl, canUseWhatsApp } from "@/lib/contact";
 import { enrichBookWithDistance, getStoredUserLocation, requestBrowserLocation } from "@/lib/location";
 import {
   formatPrice,
@@ -591,6 +593,13 @@ function RequestActionArea({
   ownRentalRequest,
   defaultActionLabel
 }) {
+  const canShowCommunicationActions = canOpenChat(ownRentalRequest);
+  const ownerPhoneNumber = ownRentalRequest?.owner?.phoneNumber || "";
+  const canShowWhatsappFallback = canShowCommunicationActions && canUseWhatsApp(ownerPhoneNumber);
+  const whatsappUrl = canShowWhatsappFallback
+    ? buildWhatsAppUrl(ownerPhoneNumber, ownRentalRequest?.book?.title || "this request")
+    : "";
+
   if (hasPendingRequest) {
     return (
       <div className="space-y-3">
@@ -660,6 +669,12 @@ function RequestActionArea({
             ? "Your request has been approved. The seller can now contact you from their incoming requests screen."
             : "Your request has been approved and this book is now reserved for you. Start the rent from My Requests when you pick it up."}
         </p>
+        <CommunicationActions
+          canShowCommunicationActions={canShowCommunicationActions}
+          chatHref={getChatHref(ownRentalRequest)}
+          canShowWhatsappFallback={canShowWhatsappFallback}
+          whatsappUrl={whatsappUrl}
+        />
       </div>
     );
   }
@@ -679,6 +694,12 @@ function RequestActionArea({
         <p className="text-sm leading-6 text-slate-600">
           This rental is currently active. You can coordinate with the owner and return it from My Requests when you are done.
         </p>
+        <CommunicationActions
+          canShowCommunicationActions={canShowCommunicationActions}
+          chatHref={getChatHref(ownRentalRequest)}
+          canShowWhatsappFallback={canShowWhatsappFallback}
+          whatsappUrl={whatsappUrl}
+        />
       </div>
     );
   }
@@ -698,6 +719,12 @@ function RequestActionArea({
         <p className="text-sm leading-6 text-slate-600">
           You have asked to return this book. The owner still needs to confirm the return before the rental is marked completed.
         </p>
+        <CommunicationActions
+          canShowCommunicationActions={canShowCommunicationActions}
+          chatHref={getChatHref(ownRentalRequest)}
+          canShowWhatsappFallback={canShowWhatsappFallback}
+          whatsappUrl={whatsappUrl}
+        />
       </div>
     );
   }
@@ -755,6 +782,36 @@ function RequestActionArea({
             : "Choose rental dates and submit your request first. The owner will review it before anything else happens."
           : "Log in first and you can continue directly into the request form."}
       </p>
+    </div>
+  );
+}
+
+function CommunicationActions({
+  canShowCommunicationActions,
+  chatHref,
+  canShowWhatsappFallback,
+  whatsappUrl
+}) {
+  if (!canShowCommunicationActions) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-3">
+      <Link href={chatHref} className="ui-btn-primary w-full">
+        Open Chat
+      </Link>
+      <p className="px-1 text-xs leading-5 text-slate-500">Use in-app chat for coordination.</p>
+      {canShowWhatsappFallback ? (
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="ui-btn-secondary block w-full px-4 py-2 text-center text-sm"
+        >
+          WhatsApp
+        </a>
+      ) : null}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
 
 const notificationRouteByType = {
+  chat_message: "",
   rental_request_created: "/incoming-requests",
   rental_request_approved: "/my-requests",
   rental_request_rejected: "/my-requests",
@@ -74,8 +75,7 @@ export function NotificationBell({ buttonClassName = "", panelClassName = "" }) 
     [notifications]
   );
   const actionableCount = useMemo(
-    () =>
-      notifications.filter((notification) => Boolean(notificationRouteByType[notification.type])).length,
+    () => notifications.filter((notification) => Boolean(getNotificationHref(notification))).length,
     [notifications]
   );
 
@@ -354,7 +354,7 @@ export function NotificationBell({ buttonClassName = "", panelClassName = "" }) 
             {!isLoading && !errorMessage && notifications.length > 0 ? (
               <div className="space-y-1.5 sm:space-y-2">
                 {notifications.map((notification) => {
-                  const href = notificationRouteByType[notification.type] || "";
+                  const href = getNotificationHref(notification);
                   const meta = getNotificationMeta(notification, href);
                   const content = (
                     <>
@@ -433,6 +433,19 @@ export function NotificationBell({ buttonClassName = "", panelClassName = "" }) 
 function getNotificationMeta(notification, href) {
   const type = notification?.type || "";
 
+  if (type === "chat_message") {
+    return {
+      typeLabel: "New message",
+      detail: href
+        ? "Open the chat thread to continue the conversation in the app."
+        : "A new chat message was received for one of your request threads.",
+      ctaLabel: href ? "Open chat" : "Info only",
+      toneClassName: "notification-chip-rental",
+      rowAccentClassName: "notification-row-rental",
+      isActionable: Boolean(href)
+    };
+  }
+
   if (type.startsWith("rental_request_")) {
     return {
       typeLabel: "Request update",
@@ -467,6 +480,14 @@ function getNotificationMeta(notification, href) {
     rowAccentClassName: "notification-row-general",
     isActionable: Boolean(href)
   };
+}
+
+function getNotificationHref(notification) {
+  if (notification?.type === "chat_message" && notification.relatedId) {
+    return `/chats/${notification.relatedId}`;
+  }
+
+  return notificationRouteByType[notification?.type] || "";
 }
 
 function PanelStat({ label, value, tone }) {

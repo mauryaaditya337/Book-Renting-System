@@ -10,6 +10,8 @@ import { BookCover } from "@/components/BookCover";
 import { apiRequest } from "@/lib/api";
 import { formatPrice } from "@/lib/books";
 import { getPrimaryBookImage, hydrateRequestBookImages } from "@/lib/bookImages";
+import { canOpenChat, getChatHref } from "@/lib/chats";
+import { buildWhatsAppUrl, canUseWhatsApp } from "@/lib/contact";
 import {
   formatRequestDate,
   formatRequestDateTime,
@@ -223,7 +225,16 @@ function getDateSummary(request, isSellRequest) {
 }
 
 function RequestSection({ title, description, requests, activeRequestId, onRequestAction }) {
-  if (requests.length === 0) {
+  const safeRequests = requests.filter((request) => {
+    if (!request?.book) {
+      console.warn("Missing book in request:", request?.id || request?._id);
+      return false;
+    }
+
+    return true;
+  });
+
+  if (safeRequests.length === 0) {
     return null;
   }
 
@@ -235,7 +246,7 @@ function RequestSection({ title, description, requests, activeRequestId, onReque
       </div>
 
       <div className="grid gap-3.5 md:gap-4">
-        {requests.map((request) => {
+        {safeRequests.map((request) => {
           const isSellRequest = request.book?.listingType === "sell";
           const isSubmitting = activeRequestId === request.id;
           const pricingDetails = getRequestPricingDetails(request);
@@ -247,6 +258,9 @@ function RequestSection({ title, description, requests, activeRequestId, onReque
           const perDayRent = pricingDetails?.find((detail) => detail.label === "Approx per day")?.value || "";
           const rentalDays = pricingDetails?.find((detail) => detail.label === "Rental days")?.value;
           const rentSummaryMeta = `${perDayRent}${rentalDays ? ` - ${rentalDays} days` : ""}`;
+          const ownerPhoneNumber = request.owner?.phoneNumber || "";
+          const whatsappUrl = buildWhatsAppUrl(ownerPhoneNumber, request.book?.title || "this book");
+          const canContactOnWhatsapp = canOpenChat(request) && canUseWhatsApp(ownerPhoneNumber);
 
           return (
             <article key={request.id} className="request-card ui-card p-3.5 sm:p-4 lg:p-5 xl:p-6">
@@ -328,6 +342,26 @@ function RequestSection({ title, description, requests, activeRequestId, onReque
                         <Link href={`/books/${request.book?.id}`} className="ui-btn-secondary w-full px-4 py-2">
                           View book
                         </Link>
+                        {canOpenChat(request) ? (
+                          <>
+                            <Link href={getChatHref(request)} className="ui-btn-primary w-full px-4 py-2">
+                              Open Chat
+                            </Link>
+                            <p className="px-1 text-xs leading-5 text-slate-500">
+                              Use in-app chat for coordination.
+                            </p>
+                          </>
+                        ) : null}
+                        {canContactOnWhatsapp ? (
+                          <a
+                            href={whatsappUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ui-btn-secondary w-full px-4 py-2 text-sm"
+                          >
+                            WhatsApp
+                          </a>
+                        ) : null}
                         {request.status === "pending" ? (
                           <div className="request-static-action border-amber-200 bg-amber-50 text-amber-700">
                             Pending Approval

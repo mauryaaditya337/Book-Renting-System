@@ -24,6 +24,7 @@ export function AppShell({ children }) {
 
   const authenticatedLinks = [
     { href: "/my-requests", label: "My Requests", shortLabel: "Requests", icon: RequestsIcon },
+    { href: "/my-chats", label: "My Chats", shortLabel: "Chats", icon: ChatIcon },
     { href: "/my-listings", label: "My Listings", shortLabel: "Listings", icon: ListingsIcon },
     { href: "/incoming-requests", label: "Incoming", shortLabel: "Incoming", icon: InboxIcon },
     { href: "/active-rentals", label: "Rentals", shortLabel: "Rentals", icon: RentalsIcon }
@@ -37,6 +38,7 @@ export function AppShell({ children }) {
   const userMenuLinks = [
     { href: "/profile", label: "View Profile" },
     { href: "/my-listings", label: "My Listings" },
+    { href: "/my-chats", label: "My Chats" },
     { href: "/my-requests", label: "My Requests" },
     { href: "/my-feedback", label: "My Feedback" }
   ];
@@ -52,6 +54,7 @@ export function AppShell({ children }) {
         ? [
             { href: "/", label: "Home", icon: HomeIcon },
             { href: "/books", label: "Browse", icon: BrowseIcon },
+            { href: "/my-chats", label: "Chats", icon: ChatIcon },
             { href: "/my-requests", label: "Requests", icon: RequestsIcon },
             { href: "/active-rentals", label: "Rentals", icon: RentalsIcon }
           ]
@@ -465,6 +468,15 @@ function RentalsIcon({ className = "" }) {
     <svg viewBox="0 0 20 20" aria-hidden="true" className={className}>
       <path d="M5 5.5h10v9H5z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
       <path d="M7.5 14.5v2M12.5 14.5v2" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+function ChatIcon({ className = "" }) {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" className={className}>
+      <path d="M4 5.5h12v7.5H9l-4 3v-10.5Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+      <path d="M7 8.75h6M7 11h4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
     </svg>
   );
 }
