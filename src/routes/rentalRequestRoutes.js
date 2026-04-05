@@ -212,9 +212,9 @@ router.get("/active/owner", protect, getOwnerActiveRentalRequestsValidation, get
 router.get("/active/renter", protect, getRenterActiveRentalRequestsValidation, getRenterActiveRentalRequests);
 router.put("/:id/approve", protect, rentalRequestActionValidation, approveRentalRequest);
 router.put("/:id/reject", protect, rejectRentalRequestValidation, rejectRentalRequest);
-router.post("/:id/start", protect, rentalRequestActionValidation, startRentalRequest);
-router.post("/:id/return-initiate", protect, rentalRequestActionValidation, initiateRentalReturn);
-router.post("/:id/confirm-return", protect, rentalRequestActionValidation, confirmRentalReturn);
+router.patch("/:id/start-rent", protect, rentalRequestActionValidation, startRentalRequest);
+router.patch("/:id/initiate-return", protect, rentalRequestActionValidation, initiateRentalReturn);
+router.patch("/:id/confirm-return", protect, rentalRequestActionValidation, confirmRentalReturn);
 router.post("/", protect, createRentalRequestValidation, createRentalRequest);
 
 module.exports = router;

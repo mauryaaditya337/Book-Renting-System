@@ -61,4 +61,14 @@ const optionalProtect = asyncHandler(async (req, res, next) => {
   next();
 });
 
-module.exports = { protect, optionalProtect };
+const adminOnly = (req, res, next) => {
+  if (!req.user || !req.user.isAdmin) {
+    const error = new Error("Not authorized as admin");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  next();
+};
+
+module.exports = { protect, optionalProtect, adminOnly };

@@ -661,13 +661,13 @@ function RequestActionArea({
           <p className="ui-trust-copy">
             {listingType === "sell"
               ? "Approval means the seller is ready to coordinate the purchase handoff."
-              : "Approval reserves the book for you, but the rental begins only when you start it."}
+              : "Approval reserves the book for you. Start Rent then locks payment in escrow and begins the rental."}
           </p>
         </div>
         <p className="text-sm leading-6 text-slate-600">
           {listingType === "sell"
             ? "Your request has been approved. The seller can now contact you from their incoming requests screen."
-            : "Your request has been approved and this book is now reserved for you. Start the rent from My Requests when you pick it up."}
+            : "Your request has been approved and this book is now reserved for you. Use Start Rent from My Requests when you pick it up."}
         </p>
         <CommunicationActions
           canShowCommunicationActions={canShowCommunicationActions}

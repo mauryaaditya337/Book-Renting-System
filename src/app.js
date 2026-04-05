@@ -10,6 +10,12 @@ const feedbackRoutes = require("./routes/feedbackRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const walletRoutes = require("./routes/walletRoutes");
+const adminUserRoutes = require("./routes/adminUserRoutes");
+const adminBookRoutes = require("./routes/adminBookRoutes");
+const adminRentalRoutes = require("./routes/adminRentalRoutes");
+const adminWalletRequestRoutes = require("./routes/adminWalletRequestRoutes");
+const adminFinancialRoutes = require("./routes/adminFinancialRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -30,6 +36,12 @@ app.use("/api/feedback", feedbackRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/chats", chatRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/admin/users", adminUserRoutes);
+app.use("/api/admin/books", adminBookRoutes);
+app.use("/api/admin/rentals", adminRentalRoutes);
+app.use("/api/admin/wallet-requests", adminWalletRequestRoutes);
+app.use("/api/admin/financial", adminFinancialRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

@@ -30,8 +30,9 @@ const VIEW_CONFIG = {
     secondaryEmptyHref: "/my-requests",
     secondaryEmptyLabel: "View my requests",
     actionLabel: "Return Book",
-    actionVerb: "return-initiate",
-    actionMethod: "POST",
+    actionVerb: "initiate-return",
+    actionMethod: "PATCH",
+    confirmMessage: "Initiate the return now? Use this when you are ready to hand the book back.",
     successFallback: "Return initiated successfully.",
     secondaryHref: "/my-requests",
     secondaryLabel: "View my requests"
@@ -51,7 +52,8 @@ const VIEW_CONFIG = {
     secondaryEmptyLabel: "Review incoming requests",
     actionLabel: "Confirm Return",
     actionVerb: "confirm-return",
-    actionMethod: "POST",
+    actionMethod: "PATCH",
+    confirmMessage: "Confirm the return now? Use this only after the book is physically back with you.",
     successFallback: "Return confirmed successfully.",
     secondaryHref: "/incoming-requests",
     secondaryLabel: "View incoming requests"
@@ -116,6 +118,10 @@ export function ActiveRentalsView({ mode }) {
 
   const handleAction = async (requestId) => {
     if (!token) {
+      return;
+    }
+
+    if (config.confirmMessage && typeof window !== "undefined" && !window.confirm(config.confirmMessage)) {
       return;
     }
 

@@ -6,14 +6,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
 import { NotificationBell } from "@/components/NotificationBell";
+import { apiRequest } from "@/lib/api";
+import { formatPrice } from "@/lib/books";
 
 export function AppShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, logout, token, user } = useAuth();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isHeaderCondensed, setIsHeaderCondensed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [walletSummary, setWalletSummary] = useState({
+    generalBalance: 0,
+    isLoading: false,
+    errorMessage: ""
+  });
   const lastScrollYRef = useRef(0);
 
   const primaryLinks = [
@@ -27,7 +34,11 @@ export function AppShell({ children }) {
     { href: "/my-chats", label: "My Chats", shortLabel: "Chats", icon: ChatIcon },
     { href: "/my-listings", label: "My Listings", shortLabel: "Listings", icon: ListingsIcon },
     { href: "/incoming-requests", label: "Incoming", shortLabel: "Incoming", icon: InboxIcon },
-    { href: "/active-rentals", label: "Rentals", shortLabel: "Rentals", icon: RentalsIcon }
+    { href: "/active-rentals", label: "Rentals", shortLabel: "Rentals", icon: RentalsIcon },
+    { href: "/wallet", label: "Wallet", shortLabel: "Wallet", icon: WalletIcon }
+  ];
+  const adminLinks = [
+    { href: "/admin/financial", label: "Admin Dashboard", shortLabel: "Admin", icon: AdminIcon }
   ];
 
   const guestMenuLinks = [
@@ -37,6 +48,7 @@ export function AppShell({ children }) {
 
   const userMenuLinks = [
     { href: "/profile", label: "View Profile" },
+    { href: "/wallet", label: "Wallet" },
     { href: "/my-listings", label: "My Listings" },
     { href: "/my-chats", label: "My Chats" },
     { href: "/my-requests", label: "My Requests" },
@@ -44,8 +56,15 @@ export function AppShell({ children }) {
   ];
 
   const navLinks = useMemo(
-    () => (isAuthenticated ? [...primaryLinks, ...authenticatedLinks] : primaryLinks),
-    [isAuthenticated]
+    () =>
+      isAuthenticated
+        ? [...primaryLinks, ...authenticatedLinks, ...(user?.isAdmin ? adminLinks : [])]
+        : primaryLinks,
+    [isAuthenticated, user]
+  );
+  const visibleUserMenuLinks = useMemo(
+    () => [...userMenuLinks, ...(user?.isAdmin ? [{ href: "/admin/financial", label: "Admin Dashboard" }] : [])],
+    [user]
   );
 
   const mobileDockLinks = useMemo(
@@ -105,6 +124,64 @@ export function AppShell({ children }) {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadWalletSummary() {
+      if (!isAuthenticated || !token) {
+        if (isActive) {
+          setWalletSummary({
+            generalBalance: 0,
+            isLoading: false,
+            errorMessage: ""
+          });
+        }
+        return;
+      }
+
+      setWalletSummary((current) => ({
+        ...current,
+        isLoading: true,
+        errorMessage: ""
+      }));
+
+      try {
+        const data = await apiRequest("/wallet/me", {
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        setWalletSummary({
+          generalBalance: data.wallet?.generalBalance ?? 0,
+          isLoading: false,
+          errorMessage: ""
+        });
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setWalletSummary({
+          generalBalance: 0,
+          isLoading: false,
+          errorMessage: error.message || "Unable to load wallet"
+        });
+      }
+    }
+
+    loadWalletSummary();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isAuthenticated, token]);
+
   const handleLogout = () => {
     logout();
     router.push("/login");
@@ -160,12 +237,20 @@ export function AppShell({ children }) {
                   buttonClassName="ui-header-icon"
                   panelClassName="sm:top-[calc(100%+0.9rem)]"
                 />
+                {isAuthenticated ? (
+                  <WalletHeaderEntry
+                    balance={walletSummary.generalBalance}
+                    isLoading={walletSummary.isLoading}
+                    hasError={Boolean(walletSummary.errorMessage)}
+                    pathname={pathname}
+                  />
+                ) : null}
                 <AccountMenu
                   isAuthenticated={isAuthenticated}
                   pathname={pathname}
                   user={user}
                   guestMenuLinks={guestMenuLinks}
-                  userMenuLinks={userMenuLinks}
+                  userMenuLinks={visibleUserMenuLinks}
                   onLogout={handleLogout}
                 />
               </div>
@@ -236,6 +321,40 @@ export function AppShell({ children }) {
         })}
       </nav>
     </div>
+  );
+}
+
+function WalletHeaderEntry({ balance, isLoading, hasError, pathname }) {
+  const isActive = isActivePath("/wallet", pathname);
+  const balanceLabel = isLoading ? "Loading..." : hasError ? "Unavailable" : formatPrice(balance);
+
+  return (
+    <Link
+      href="/wallet"
+      aria-label="Open wallet available balance"
+      title={hasError ? "Wallet unavailable right now" : "Open wallet available balance"}
+      className={`hidden items-center gap-3 rounded-2xl border px-3 py-2.5 transition md:flex ${
+        isActive
+          ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+          : "border-white/70 bg-white/85 text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.08)] hover:bg-white"
+      }`}
+    >
+      <span
+        className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+          isActive ? "bg-white/12 text-white" : "bg-slate-100 text-slate-700"
+        }`}
+      >
+        <WalletIcon className="h-5 w-5" />
+      </span>
+      <span className="min-w-0">
+        <span className={`block text-[11px] uppercase tracking-[0.22em] ${isActive ? "text-slate-200" : "text-slate-500"}`}>
+          Available
+        </span>
+        <span className="block text-sm font-semibold">
+          {balanceLabel}
+        </span>
+      </span>
+    </Link>
   );
 }
 
@@ -477,6 +596,53 @@ function ChatIcon({ className = "" }) {
     <svg viewBox="0 0 20 20" aria-hidden="true" className={className}>
       <path d="M4 5.5h12v7.5H9l-4 3v-10.5Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
       <path d="M7 8.75h6M7 11h4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+function WalletIcon({ className = "" }) {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" className={className}>
+      <path
+        d="M4.5 6.5h10a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 3 13V8A1.5 1.5 0 0 1 4.5 6.5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M13 10.5h3M5.5 6.5V5.75A1.75 1.75 0 0 1 7.25 4h6.25"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <circle cx="13.5" cy="10.5" r="0.8" fill="currentColor" />
+    </svg>
+  );
+}
+
+function AdminIcon({ className = "" }) {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" className={className}>
+      <path
+        d="M10 3.5 15.5 6v4.25c0 3.1-2.16 5.96-5.5 6.95-3.34-.99-5.5-3.85-5.5-6.95V6L10 3.5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M7.75 10.25h4.5M10 8v4.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
     </svg>
   );
 }

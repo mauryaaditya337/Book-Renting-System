@@ -336,7 +336,7 @@ function getStatusDetail(request) {
   }
 
   if (request.status === "approved") {
-    return "Approved. The renter can now move this request forward.";
+    return "Approved. The renter can now use Start Rent to lock payment and begin the rental.";
   }
 
   if (request.status === "active") {
@@ -665,7 +665,7 @@ function getIncomingLifecycleNote(request) {
   }
 
   if (request.status === "approved") {
-    return "This request is approved, so the reader can now move the rental forward from their side.";
+    return "This request is approved, so the reader can now use Start Rent after handoff to lock payment and begin the rental.";
   }
 
   if (request.status === "active") {

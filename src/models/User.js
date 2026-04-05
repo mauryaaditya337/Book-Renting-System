@@ -101,6 +101,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       maxlength: [300, "Avatar URL must be less than 300 characters long"]
+    },
+    isAdmin: {
+      type: Boolean,
+      default: false
     }
   },
   {

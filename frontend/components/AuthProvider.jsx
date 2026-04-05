@@ -14,6 +14,7 @@ function normalizeUserProfile(user) {
 
   return {
     ...user,
+    isAdmin: Boolean(user.isAdmin),
     fullName: user.fullName || user.name || "",
     collegeName: user.collegeName || "",
     phoneNumber: user.phoneNumber || user.phone || "",

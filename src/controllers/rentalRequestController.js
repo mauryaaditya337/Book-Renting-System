@@ -5,6 +5,12 @@ const validateRequest = require("../utils/validateRequest");
 const asyncHandler = require("../middleware/asyncHandler");
 const createNotification = require("../utils/createNotification");
 const { calculateRentalPricing } = require("../utils/rentalPricing");
+const {
+  getOrCreateWallet,
+  lockFundsForRentalEscrow,
+  settleLockedRentalFunds,
+  runWalletOperationInTransaction
+} = require("../services/walletService");
 
 const CHAT_ENABLED_REQUEST_STATUSES = ["approved", "active", "return_pending"];
 
@@ -59,6 +65,30 @@ const formatUserSummary = (user, { includeFullName = false, includePhoneNumber =
   ...(includePhoneNumber ? { phoneNumber: user?.phoneNumber || user?.phone || "" } : {})
 });
 
+const formatWalletSummary = (wallet) => ({
+  _id: wallet?._id || "",
+  user: wallet?.user || "",
+  generalBalance: wallet?.generalBalance ?? 0,
+  lockedBalance: wallet?.lockedBalance ?? 0,
+  createdAt: wallet?.createdAt || null,
+  updatedAt: wallet?.updatedAt || null
+});
+
+const formatRentalFinancialState = (rentalRequest) => ({
+  paymentStatus: rentalRequest.paymentStatus || "unpaid",
+  lockedRent: rentalRequest.lockedRent ?? 0,
+  lockedDeposit: rentalRequest.lockedDeposit ?? 0,
+  totalLockedAmount: rentalRequest.totalLockedAmount ?? 0,
+  paymentConfirmedAt: rentalRequest.paymentConfirmedAt || null,
+  fundsLockedAt: rentalRequest.fundsLockedAt || null,
+  settlementStatus: rentalRequest.settlementStatus || "pending",
+  settledAt: rentalRequest.settledAt || null,
+  depositRefundedAt: rentalRequest.depositRefundedAt || null,
+  rentReleasedAt: rentalRequest.rentReleasedAt || null,
+  financialActionVersion: rentalRequest.financialActionVersion ?? 0,
+  paymentReference: rentalRequest.paymentReference || ""
+});
+
 const formatRentalRequestResponse = (rentalRequest) => ({
   ...getRentalPricingSnapshot(rentalRequest),
   id: rentalRequest._id,
@@ -88,6 +118,7 @@ const formatRentalRequestActionResponse = (rentalRequest) => ({
 
 const formatRentalRequestRenterActionResponse = (rentalRequest) => ({
   ...getRentalPricingSnapshot(rentalRequest),
+  ...formatRentalFinancialState(rentalRequest),
   id: rentalRequest._id,
   status: rentalRequest.status,
   rejectionReason: rentalRequest.rejectionReason || "",
@@ -137,6 +168,7 @@ const formatIncomingRentalRequestListItem = (rentalRequest) => ({
 
 const formatOutgoingRentalRequestListItem = (rentalRequest) => ({
   ...getRentalPricingSnapshot(rentalRequest),
+  ...formatRentalFinancialState(rentalRequest),
   id: rentalRequest._id,
   status: rentalRequest.status,
   rejectionReason: rentalRequest.rejectionReason || "",
@@ -384,40 +416,149 @@ const rejectRentalRequest = asyncHandler(async (req, res) => {
 const startRentalRequest = asyncHandler(async (req, res) => {
   validateRequest(req);
 
-  const rentalRequest = await getRentalRequestForRenterAction(req.params.id, req.user._id);
+  const { rentalRequestId, renterWallet, ownerWallet } = await runWalletOperationInTransaction(
+    async (session) => {
+      const rentalRequest = await RentalRequest.findById(req.params.id)
+        .populate("book", "title author category listingType rentalPrice salePrice securityDeposit")
+        .session(session);
 
-  if (rentalRequest.status === "active") {
-    const error = new Error("This rental request has already been started");
-    error.statusCode = 400;
-    throw error;
-  }
+      if (!rentalRequest) {
+        const error = new Error("Rental request not found");
+        error.statusCode = 404;
+        throw error;
+      }
 
-  if (rentalRequest.status === "completed") {
-    const error = new Error("This rental request has already been completed");
-    error.statusCode = 400;
-    throw error;
-  }
+      if (rentalRequest.renter.toString() !== req.user._id.toString()) {
+        const error = new Error("You are not authorized to update this rental request");
+        error.statusCode = 403;
+        throw error;
+      }
 
-  if (rentalRequest.status !== "approved") {
-    const error = new Error("Only approved rental requests can be started");
-    error.statusCode = 400;
-    throw error;
-  }
+      if (rentalRequest.status === "active") {
+        const error = new Error("Rental already started");
+        error.statusCode = 400;
+        throw error;
+      }
 
-  if (rentalRequest.book.listingType === "sell") {
-    const error = new Error("Sell requests do not support rental actions");
-    error.statusCode = 400;
-    throw error;
-  }
+      if (rentalRequest.status === "completed") {
+        const error = new Error("This rental request has already been completed");
+        error.statusCode = 400;
+        throw error;
+      }
 
-  rentalRequest.status = "active";
-  await rentalRequest.save();
+      if (rentalRequest.status !== "approved") {
+        const error = new Error("Only owner-approved rental requests can be started");
+        error.statusCode = 400;
+        throw error;
+      }
 
-  await Book.findByIdAndUpdate(rentalRequest.book._id, {
-    $set: { availabilityStatus: "rented" }
-  });
+      if (rentalRequest.paymentStatus !== "unpaid") {
+        const error = new Error("This rental request is not eligible to start");
+        error.statusCode = 400;
+        throw error;
+      }
 
-  const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
+      if (rentalRequest.book.listingType !== "rent") {
+        const error = new Error("Only rent listings support rental actions");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const lockedRent = typeof rentalRequest.totalRent === "number" ? rentalRequest.totalRent : 0;
+      const lockedDeposit =
+        typeof rentalRequest.book.securityDeposit === "number" ? rentalRequest.book.securityDeposit : 0;
+      const totalLockedAmount = lockedRent + lockedDeposit;
+
+      if (lockedRent < 0 || lockedDeposit < 0 || totalLockedAmount <= 0) {
+        const error = new Error("Invalid lock amount for this rental request");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const now = new Date();
+
+      const updatedRentalRequest = await RentalRequest.findOneAndUpdate(
+        {
+          _id: rentalRequest._id,
+          renter: req.user._id,
+          status: "approved",
+          paymentStatus: "unpaid",
+          financialActionVersion: rentalRequest.financialActionVersion ?? 0
+        },
+        {
+          $set: {
+            status: "active",
+            paymentStatus: "locked",
+            lockedRent,
+            lockedDeposit,
+            totalLockedAmount,
+            paymentConfirmedAt: now,
+            actualStartDate: rentalRequest.actualStartDate || now,
+            fundsLockedAt: now
+          },
+          $inc: {
+            financialActionVersion: 1
+          }
+        },
+        {
+          new: true,
+          session
+        }
+      );
+
+      if (!updatedRentalRequest) {
+        const error = new Error("This rental request has already been processed");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      await getOrCreateWallet(rentalRequest.owner, { session });
+
+      const lockResult = await lockFundsForRentalEscrow(
+        {
+          renterUserId: rentalRequest.renter,
+          ownerUserId: rentalRequest.owner,
+          amount: totalLockedAmount,
+          referenceId: rentalRequest._id,
+          renterDescription: "Rental payment for book",
+          ownerDescription: "Funds locked for rental",
+          renterMetadata: {
+            source: "rental_start",
+            rentalRequestId: rentalRequest._id,
+            bookId: rentalRequest.book._id,
+            bookTitle: rentalRequest.book.title || "",
+            lockedRent,
+            lockedDeposit
+          },
+          ownerMetadata: {
+            source: "rental_start",
+            rentalRequestId: rentalRequest._id,
+            bookId: rentalRequest.book._id,
+            bookTitle: rentalRequest.book.title || "",
+            lockedRent,
+            lockedDeposit
+          }
+        },
+        { session }
+      );
+
+      await Book.findByIdAndUpdate(
+        rentalRequest.book._id,
+        {
+          $set: { availabilityStatus: "rented" }
+        },
+        { session }
+      );
+
+      return {
+        rentalRequestId: updatedRentalRequest._id,
+        renterWallet: lockResult.renterWallet,
+        ownerWallet: lockResult.ownerWallet
+      };
+    }
+  );
+
+  const updatedRentalRequest = await RentalRequest.findById(rentalRequestId)
     .populate("book", "title author category listingType rentalPrice salePrice securityDeposit")
     .populate("owner", "fullName name phoneNumber phone");
 
@@ -427,8 +568,12 @@ const startRentalRequest = asyncHandler(async (req, res) => {
   );
 
   res.status(200).json({
-    message: "Rental started successfully",
-    rentalRequest: responsePayload
+    message: "Rental started successfully and funds locked in escrow",
+    rentalRequest: responsePayload,
+    wallet: {
+      renter: formatWalletSummary(renterWallet),
+      owner: formatWalletSummary(ownerWallet)
+    }
   });
 });
 
@@ -445,6 +590,18 @@ const initiateRentalReturn = asyncHandler(async (req, res) => {
 
   if (rentalRequest.status !== "active") {
     const error = new Error("Only active rental requests can be returned");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (rentalRequest.paymentStatus !== "locked") {
+    const error = new Error("Only rentals with locked funds can initiate return");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (rentalRequest.settlementStatus !== "pending") {
+    const error = new Error("This rental request is not eligible for return initiation");
     error.statusCode = 400;
     throw error;
   }
@@ -483,41 +640,133 @@ const initiateRentalReturn = asyncHandler(async (req, res) => {
 const confirmRentalReturn = asyncHandler(async (req, res) => {
   validateRequest(req);
 
-  const rentalRequest = await getRentalRequestForOwnerAction(req.params.id, req.user._id);
+  const { rentalRequestId, renterId } = await runWalletOperationInTransaction(async (session) => {
+    const rentalRequest = await RentalRequest.findById(req.params.id)
+      .populate("book", "listingType title")
+      .session(session);
 
-  if (rentalRequest.status === "completed") {
-    const error = new Error("This rental request has already been completed");
-    error.statusCode = 400;
-    throw error;
-  }
+    if (!rentalRequest) {
+      const error = new Error("Rental request not found");
+      error.statusCode = 404;
+      throw error;
+    }
 
-  if (rentalRequest.status !== "return_pending") {
-    const error = new Error("Only return pending rental requests can be confirmed");
-    error.statusCode = 400;
-    throw error;
-  }
+    if (rentalRequest.owner.toString() !== req.user._id.toString()) {
+      const error = new Error("You are not authorized to update this rental request");
+      error.statusCode = 403;
+      throw error;
+    }
 
-  if (rentalRequest.book.listingType === "sell") {
-    const error = new Error("Sell requests do not support return actions");
-    error.statusCode = 400;
-    throw error;
-  }
+    if (rentalRequest.status === "completed") {
+      const error = new Error("This rental request has already been completed");
+      error.statusCode = 400;
+      throw error;
+    }
 
-  rentalRequest.status = "completed";
-  await rentalRequest.save();
+    if (rentalRequest.status !== "return_pending") {
+      const error = new Error("Only return pending rental requests can be confirmed");
+      error.statusCode = 400;
+      throw error;
+    }
 
-  await Book.findByIdAndUpdate(rentalRequest.book._id, {
-    $set: { availabilityStatus: "available" }
+    if (rentalRequest.paymentStatus !== "locked") {
+      const error = new Error("Only rentals with locked funds can be settled");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (rentalRequest.settlementStatus !== "pending") {
+      const error = new Error("This rental request has already been settled");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (rentalRequest.book.listingType === "sell") {
+      const error = new Error("Sell requests do not support return actions");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const lockedRent = typeof rentalRequest.lockedRent === "number" ? rentalRequest.lockedRent : 0;
+    const lockedDeposit =
+      typeof rentalRequest.lockedDeposit === "number" ? rentalRequest.lockedDeposit : 0;
+    const totalLockedAmount =
+      typeof rentalRequest.totalLockedAmount === "number" ? rentalRequest.totalLockedAmount : 0;
+
+    const now = new Date();
+
+    const updatedRentalRequest = await RentalRequest.findOneAndUpdate(
+      {
+        _id: rentalRequest._id,
+        owner: req.user._id,
+        status: "return_pending",
+        paymentStatus: "locked",
+        settlementStatus: "pending"
+      },
+      {
+        $set: {
+          status: "completed",
+          paymentStatus: "settled",
+          settlementStatus: "completed",
+          settledAt: now,
+          actualReturnDate: rentalRequest.actualReturnDate || now,
+          depositRefundedAt: now,
+          rentReleasedAt: now,
+          lockedRent: 0,
+          lockedDeposit: 0,
+          totalLockedAmount: 0
+        },
+        $inc: {
+          financialActionVersion: 1
+        }
+      },
+      {
+        new: true,
+        session
+      }
+    );
+
+    if (!updatedRentalRequest) {
+      const error = new Error("This rental request has already been settled");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await settleLockedRentalFunds(
+      {
+        renterUserId: rentalRequest.renter,
+        ownerUserId: rentalRequest.owner,
+        lockedRent,
+        lockedDeposit,
+        totalLockedAmount,
+        referenceId: rentalRequest._id,
+        bookTitle: rentalRequest.book?.title || ""
+      },
+      { session }
+    );
+
+    await Book.findByIdAndUpdate(
+      rentalRequest.book._id || rentalRequest.book,
+      {
+        $set: { availabilityStatus: "available" }
+      },
+      { session }
+    );
+
+    return {
+      rentalRequestId: updatedRentalRequest._id,
+      renterId: rentalRequest.renter
+    };
   });
 
   createNotification({
-    userId: rentalRequest.renter._id,
+    userId: renterId,
     type: "rental_return_confirmed",
     message: "Return confirmed. Book completed",
-    relatedId: rentalRequest._id
+    relatedId: rentalRequestId
   });
 
-  const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
+  const updatedRentalRequest = await RentalRequest.findById(rentalRequestId)
     .populate("book", "title author category listingType rentalPrice salePrice securityDeposit")
     .populate("renter", "name phoneNumber phone");
 

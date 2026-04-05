@@ -23,6 +23,24 @@ import {
 
 const PAGE_LIMIT = 20;
 
+const RENTER_ACTION_CONFIG = {
+  startRent: {
+    action: "start-rent",
+    method: "PATCH",
+    label: "Start Rent",
+    loadingLabel: "Starting rent...",
+    confirmMessage:
+      "Start this rental now? This locks the rent and deposit in escrow and starts the rental. Use it after you receive the book."
+  },
+  initiateReturn: {
+    action: "initiate-return",
+    method: "PATCH",
+    label: "Initiate Return",
+    loadingLabel: "Initiating return...",
+    confirmMessage: "Initiate the return now? Use this when you are ready to hand the book back."
+  }
+};
+
 export function MyRequestsView() {
   const { token } = useAuth();
   const [requests, setRequests] = useState([]);
@@ -79,13 +97,23 @@ export function MyRequestsView() {
       return;
     }
 
+    const actionConfig = RENTER_ACTION_CONFIG[action];
+
+    if (!actionConfig) {
+      return;
+    }
+
+    if (typeof window !== "undefined" && !window.confirm(actionConfig.confirmMessage)) {
+      return;
+    }
+
     setActiveRequestId(requestId);
     setActionMessage("");
     setActionError("");
 
     try {
-      const data = await apiRequest(`/rent-requests/${requestId}/${action}`, {
-        method: "POST",
+      const data = await apiRequest(`/rent-requests/${requestId}/${actionConfig.action}`, {
+        method: actionConfig.method,
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -189,8 +217,12 @@ function getStatusDetail(request, isSellRequest) {
     return "Waiting for the owner to review your request.";
   }
 
+  if (request.status === "approved" && !isSellRequest && request.paymentStatus === "unpaid") {
+    return "Approved. Start Rent locks payment in escrow and starts the rental after handoff.";
+  }
+
   if (request.status === "approved" && !isSellRequest) {
-    return "Approved and ready for you to start the rental.";
+    return "Approved. Start Rent is the next step after handoff.";
   }
 
   if (request.status === "approved" && isSellRequest) {
@@ -249,6 +281,7 @@ function RequestSection({ title, description, requests, activeRequestId, onReque
         {safeRequests.map((request) => {
           const isSellRequest = request.book?.listingType === "sell";
           const isSubmitting = activeRequestId === request.id;
+          const primaryRenterAction = getPrimaryRenterAction(request, isSellRequest);
           const pricingDetails = getRequestPricingDetails(request);
           const statusLabel = toRequestStatusLabel(request.status);
           const statusTone = getRequestStatusTone(request.status);
@@ -372,24 +405,14 @@ function RequestSection({ title, description, requests, activeRequestId, onReque
                             Request Rejected
                           </div>
                         ) : null}
-                        {request.status === "approved" && !isSellRequest ? (
+                        {primaryRenterAction ? (
                           <button
                             type="button"
                             disabled={isSubmitting}
-                            onClick={() => onRequestAction(request.id, "start")}
+                            onClick={() => onRequestAction(request.id, primaryRenterAction.key)}
                             className="ui-btn-dark w-full px-4 py-2"
                           >
-                            {isSubmitting ? "Starting..." : "Start Rent"}
-                          </button>
-                        ) : null}
-                        {request.status === "active" && !isSellRequest ? (
-                          <button
-                            type="button"
-                            disabled={isSubmitting}
-                            onClick={() => onRequestAction(request.id, "return-initiate")}
-                            className="ui-btn-dark w-full px-4 py-2"
-                          >
-                            {isSubmitting ? "Updating..." : "Return Book"}
+                            {isSubmitting ? primaryRenterAction.loadingLabel : primaryRenterAction.label}
                           </button>
                         ) : null}
                         {request.status === "return_pending" && !isSellRequest ? (
@@ -437,7 +460,9 @@ function getLifecycleNote(request, isSellRequest) {
   }
 
   if (request.status === "approved") {
-    return "Approval reserves the book for you, but the rental is not active until you start it.";
+    return isSellRequest
+      ? "Approval means the seller is ready to coordinate the purchase handoff with you."
+      : "Approval reserves the book for you. Once the handoff happens, Start Rent locks payment in escrow and activates the rental.";
   }
 
   if (request.status === "active") {
@@ -457,6 +482,28 @@ function getLifecycleNote(request, isSellRequest) {
   }
 
   return "Follow the current status here to understand the next safe step.";
+}
+
+function getPrimaryRenterAction(request, isSellRequest) {
+  if (isSellRequest) {
+    return null;
+  }
+
+  if (request.status === "approved") {
+    return {
+      key: "startRent",
+      ...RENTER_ACTION_CONFIG.startRent
+    };
+  }
+
+  if (request.status === "active") {
+    return {
+      key: "initiateReturn",
+      ...RENTER_ACTION_CONFIG.initiateReturn
+    };
+  }
+
+  return null;
 }
 
 function InfoRow({ label, value, meta }) {

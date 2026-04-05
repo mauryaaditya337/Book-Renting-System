@@ -45,6 +45,69 @@ const rentalRequestSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Total rent must be at least 0"]
     },
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "locked", "settled", "refunded"],
+      default: "unpaid"
+    },
+    lockedRent: {
+      type: Number,
+      default: 0,
+      min: [0, "Locked rent must be at least 0"]
+    },
+    lockedDeposit: {
+      type: Number,
+      default: 0,
+      min: [0, "Locked deposit must be at least 0"]
+    },
+    totalLockedAmount: {
+      type: Number,
+      default: 0,
+      min: [0, "Total locked amount must be at least 0"]
+    },
+    paymentConfirmedAt: {
+      type: Date,
+      default: null
+    },
+    actualStartDate: {
+      type: Date,
+      default: null
+    },
+    fundsLockedAt: {
+      type: Date,
+      default: null
+    },
+    settlementStatus: {
+      type: String,
+      enum: ["pending", "completed", "refunded"],
+      default: "pending"
+    },
+    settledAt: {
+      type: Date,
+      default: null
+    },
+    actualReturnDate: {
+      type: Date,
+      default: null
+    },
+    depositRefundedAt: {
+      type: Date,
+      default: null
+    },
+    rentReleasedAt: {
+      type: Date,
+      default: null
+    },
+    financialActionVersion: {
+      type: Number,
+      default: 0,
+      min: [0, "Financial action version must be at least 0"]
+    },
+    paymentReference: {
+      type: String,
+      trim: true,
+      default: ""
+    },
     status: {
       type: String,
       enum: ["pending", "approved", "active", "return_pending", "completed", "rejected"],

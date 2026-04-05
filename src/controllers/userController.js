@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 
 const User = require("../models/User");
+const Wallet = require("../models/Wallet");
 const generateToken = require("../utils/generateToken");
 const validateRequest = require("../utils/validateRequest");
 const asyncHandler = require("../middleware/asyncHandler");
@@ -10,6 +11,7 @@ const formatCurrentUser = (user) => ({
   fullName: user.fullName || user.name || "",
   name: user.name || user.fullName || "",
   email: user.email,
+  isAdmin: Boolean(user.isAdmin),
   collegeName: user.collegeName || "",
   phoneNumber: user.phoneNumber || user.phone || "",
   phone: user.phone || user.phoneNumber || "",
@@ -48,6 +50,22 @@ const signupUser = asyncHandler(async (req, res) => {
     phone: phoneNumber
   });
 
+  await Wallet.findOneAndUpdate(
+    { user: user._id },
+    {
+      $setOnInsert: {
+        user: user._id,
+        generalBalance: 0,
+        lockedBalance: 0
+      }
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true
+    }
+  );
+
   res.status(201).json({
     message: "User registered successfully",
     user: formatCurrentUser(user)
@@ -83,7 +101,8 @@ const loginUser = asyncHandler(async (req, res) => {
     user: {
       id: user._id,
       name: user.name,
-      email: user.email
+      email: user.email,
+      isAdmin: Boolean(user.isAdmin)
     }
   });
 });
