@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.0",
+    "@vercel/analytics": "^2.0.1",
     "@zxing/browser": "^0.1.5",
     "leaflet": "^1.9.4",
     "next": "^15.3.0",
