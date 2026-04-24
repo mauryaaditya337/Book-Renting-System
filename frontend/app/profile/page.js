@@ -7,6 +7,7 @@ import { ProtectedPage } from "@/components/ProtectedPage";
 import { ToastViewport } from "@/components/ToastViewport";
 import { useAuth } from "@/components/AuthProvider";
 import { apiRequest } from "@/lib/api";
+import { formatAverageRating, renderStars } from "@/lib/reviews";
 
 const ACCOUNT_SHORTCUTS = [
   {
@@ -97,6 +98,12 @@ export default function ProfilePage() {
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [reviewStats, setReviewStats] = useState({
+    averageRating: 0,
+    totalReviews: 0,
+    reviews: []
+  });
+  const [isLoadingReviews, setIsLoadingReviews] = useState(true);
 
   useEffect(() => {
     setFormData({
@@ -110,6 +117,60 @@ export default function ProfilePage() {
       qualification: user?.qualification || "",
       currentDegree: user?.currentDegree || ""
     });
+  }, [user]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadReviews() {
+      if (!user?.id) {
+        if (isActive) {
+          setReviewStats({
+            averageRating: 0,
+            totalReviews: 0,
+            reviews: []
+          });
+          setIsLoadingReviews(false);
+        }
+        return;
+      }
+
+      setIsLoadingReviews(true);
+
+      try {
+        const data = await apiRequest(`/reviews/user/${user.id}`, {
+          cache: "no-store"
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        setReviewStats({
+          averageRating: data.averageRating || 0,
+          totalReviews: data.totalReviews || 0,
+          reviews: Array.isArray(data.reviews) ? data.reviews.slice(0, 3) : []
+        });
+      } catch (_error) {
+        if (isActive) {
+          setReviewStats({
+            averageRating: 0,
+            totalReviews: 0,
+            reviews: []
+          });
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingReviews(false);
+        }
+      }
+    }
+
+    loadReviews();
+
+    return () => {
+      isActive = false;
+    };
   }, [user]);
 
   const handleChange = (event) => {
@@ -275,6 +336,23 @@ export default function ProfilePage() {
               <p className="ui-trust-value">{profileCompletion}% profile completion</p>
               <p className="ui-trust-copy">
                 A fuller account gives owners and renters more confidence during requests and returns.
+              </p>
+            </div>
+            <div className="ui-trust-card">
+              <p className="ui-trust-label">Community rating</p>
+              <p className="ui-trust-value">
+                {isLoadingReviews
+                  ? "Loading..."
+                  : reviewStats.totalReviews > 0
+                    ? `${formatAverageRating(reviewStats.averageRating)} / 5`
+                    : "No reviews yet"}
+              </p>
+              <p className="ui-trust-copy">
+                {isLoadingReviews
+                  ? "Fetching your latest trust signals."
+                  : reviewStats.totalReviews > 0
+                    ? `${renderStars(reviewStats.averageRating)} from ${reviewStats.totalReviews} completed transaction review${reviewStats.totalReviews > 1 ? "s" : ""}.`
+                    : "Completed rentals and orders can add reviews here over time."}
               </p>
             </div>
           </div>
@@ -533,6 +611,38 @@ export default function ProfilePage() {
                   </Link>
                 ))}
               </div>
+            </div>
+
+            <div className="profile-sidebar-card">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  Recent reviews
+                </p>
+                <h2 className="mt-2 text-xl font-semibold text-slate-900">Trust from completed orders</h2>
+              </div>
+
+              {isLoadingReviews ? (
+                <p className="text-sm text-slate-600">Loading reviews...</p>
+              ) : reviewStats.reviews.length === 0 ? (
+                <p className="text-sm leading-6 text-slate-600">
+                  Completed orders will start building your public trust record here.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {reviewStats.reviews.map((review) => (
+                    <div key={review.id} className="rounded-[1.35rem] border border-slate-200/80 bg-slate-50/90 px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {review.reviewer?.name || "Reader"} • {renderStars(review.rating)}
+                      </p>
+                      {review.comment ? (
+                        <p className="mt-2 text-sm leading-6 text-slate-600">{review.comment}</p>
+                      ) : (
+                        <p className="mt-2 text-sm leading-6 text-slate-500">No written comment shared.</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </aside>
         </form>

@@ -39,7 +39,8 @@ export function AppShell({ children }) {
     { href: "/wallet", label: "Wallet", shortLabel: "Wallet", icon: WalletIcon }
   ];
   const adminLinks = [
-    { href: "/admin/financial", label: "Admin Dashboard", shortLabel: "Admin", icon: AdminIcon }
+    { href: "/admin/financial", label: "Admin Dashboard", shortLabel: "Admin", icon: AdminIcon },
+    { href: "/admin/feedback", label: "Feedback Admin", shortLabel: "Feedback", icon: FeedbackIcon }
   ];
 
   const guestMenuLinks = [
@@ -65,7 +66,15 @@ export function AppShell({ children }) {
     [isAuthenticated, user]
   );
   const visibleUserMenuLinks = useMemo(
-    () => [...userMenuLinks, ...(user?.isAdmin ? [{ href: "/admin/financial", label: "Admin Dashboard" }] : [])],
+    () => [
+      ...userMenuLinks,
+      ...(user?.isAdmin
+        ? [
+            { href: "/admin/financial", label: "Admin Dashboard" },
+            { href: "/admin/feedback", label: "Admin Feedback" }
+          ]
+        : [])
+    ],
     [user]
   );
 

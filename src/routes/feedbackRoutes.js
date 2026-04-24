@@ -1,13 +1,19 @@
 const express = require("express");
-const { body, query } = require("express-validator");
+const { body, param, query } = require("express-validator");
 
-const { createFeedback, getMyFeedback } = require("../controllers/feedbackController");
-const { protect, optionalProtect } = require("../middleware/authMiddleware");
+const {
+  createFeedback,
+  getMyFeedback,
+  getAllFeedback,
+  updateFeedbackStatus
+} = require("../controllers/feedbackController");
+const { protect, optionalProtect, adminOnly } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
 const allowedFeedbackFields = ["type", "message", "page"];
 const allowedFeedbackTypes = ["bug", "suggestion", "general"];
+const allowedFeedbackStatuses = ["new", "reviewed"];
 
 const createFeedbackValidation = [
   body().custom((value) => {
@@ -69,7 +75,54 @@ const getMyFeedbackValidation = [
     .toInt()
 ];
 
+const getAllFeedbackValidation = [
+  query().custom((value, { req }) => {
+    const queryKeys = Object.keys(req.query);
+    const unknownFields = queryKeys.filter((key) => !["type", "status"].includes(key));
+
+    if (unknownFields.length > 0) {
+      throw new Error(`Unknown query param(s): ${unknownFields.join(", ")}`);
+    }
+
+    return true;
+  }),
+  query("type")
+    .optional()
+    .isIn(allowedFeedbackTypes)
+    .withMessage("Type must be one of: bug, suggestion, general"),
+  query("status")
+    .optional()
+    .isIn(allowedFeedbackStatuses)
+    .withMessage("Status must be one of: new, reviewed")
+];
+
+const updateFeedbackStatusValidation = [
+  param("id").isMongoId().withMessage("Feedback id must be a valid MongoDB ObjectId"),
+  body().custom((value) => {
+    if (!value || Array.isArray(value) || typeof value !== "object") {
+      throw new Error("Request body must be a valid JSON object");
+    }
+
+    const keys = Object.keys(value);
+    const unknownFields = keys.filter((key) => key !== "status");
+
+    if (unknownFields.length > 0) {
+      throw new Error(`Unknown field(s): ${unknownFields.join(", ")}`);
+    }
+
+    return true;
+  }),
+  body("status")
+    .exists({ checkFalsy: true })
+    .withMessage("Status is required")
+    .bail()
+    .isIn(allowedFeedbackStatuses)
+    .withMessage("Status must be one of: new, reviewed")
+];
+
 router.post("/", optionalProtect, createFeedbackValidation, createFeedback);
 router.get("/mine", protect, getMyFeedbackValidation, getMyFeedback);
+router.get("/", protect, adminOnly, getAllFeedbackValidation, getAllFeedback);
+router.patch("/:id/status", protect, adminOnly, updateFeedbackStatusValidation, updateFeedbackStatus);
 
 module.exports = router;

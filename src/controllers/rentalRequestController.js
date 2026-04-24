@@ -11,8 +11,13 @@ const {
   settleLockedRentalFunds,
   runWalletOperationInTransaction
 } = require("../services/walletService");
+const { attachCurrentUserReviewsToRequests } = require("../services/reviewService");
 
 const CHAT_ENABLED_REQUEST_STATUSES = ["approved", "active", "return_pending"];
+const FINAL_REQUEST_STATUSES = ["completed", "rejected", "cancelled", "expired"];
+const CANCELABLE_RENTER_REQUEST_STATUSES = ["pending", "approved"];
+const ACTIVE_REQUEST_STATUSES = ["pending", "approved", "active", "return_pending"];
+const DEFAULT_PENDING_EXPIRY_DAYS = 7;
 
 const normalizeDate = (value) => {
   const date = new Date(value);
@@ -250,6 +255,24 @@ const closeChatThreadForRequest = async (requestId) => {
   );
 };
 
+const getPendingExpiryCutoffDate = (days = DEFAULT_PENDING_EXPIRY_DAYS) => {
+  const normalizedDays = Number.isFinite(Number(days)) ? Number(days) : DEFAULT_PENDING_EXPIRY_DAYS;
+  const safeDays = normalizedDays > 0 ? normalizedDays : DEFAULT_PENDING_EXPIRY_DAYS;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - safeDays);
+  return cutoff;
+};
+
+const buildCancelledRequestMessage = (request, actor = "renter") => {
+  if (actor === "owner") {
+    return request.book?.listingType === "sell"
+      ? "Owner cancelled the reservation"
+      : "Owner cancelled the reservation";
+  }
+
+  return "Request was cancelled";
+};
+
 const attachChatMetadataToRequest = async (payload, rentalRequest) => {
   const thread = await ensureChatThreadForRequest(rentalRequest);
 
@@ -318,6 +341,131 @@ const getRentalRequestForRenterAction = async (requestId, userId) => {
 
   return rentalRequest;
 };
+
+const cancelRentalRequest = asyncHandler(async (req, res) => {
+  validateRequest(req);
+
+  const rentalRequest = await getRentalRequestForRenterAction(req.params.id, req.user._id);
+
+  if (!CANCELABLE_RENTER_REQUEST_STATUSES.includes(rentalRequest.status)) {
+    const error = new Error("Only pending or approved requests can be cancelled");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const wasApproved = rentalRequest.status === "approved";
+
+  rentalRequest.status = "cancelled";
+  await rentalRequest.save();
+
+  if (wasApproved) {
+    await Book.findByIdAndUpdate(rentalRequest.book._id || rentalRequest.book, {
+      $set: { availabilityStatus: "available" }
+    });
+  }
+
+  await closeChatThreadForRequest(rentalRequest._id);
+
+  createNotification({
+    userId: rentalRequest.owner._id,
+    type: "rental_request_cancelled",
+    message: buildCancelledRequestMessage(rentalRequest, "renter"),
+    relatedId: rentalRequest._id
+  });
+
+  const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
+    .populate("book", "title author category listingType rentalPrice salePrice securityDeposit")
+    .populate("owner", "fullName name phoneNumber phone");
+
+  const responsePayload = await attachChatMetadataToRequest(
+    formatRentalRequestRenterActionResponse(updatedRentalRequest),
+    updatedRentalRequest
+  );
+
+  res.status(200).json({
+    message: wasApproved ? "Reservation cancelled and book released successfully" : "Request cancelled successfully",
+    rentalRequest: responsePayload
+  });
+});
+
+const ownerCancelRentalRequest = asyncHandler(async (req, res) => {
+  validateRequest(req);
+
+  const rentalRequest = await getRentalRequestForOwnerAction(req.params.id, req.user._id);
+
+  if (rentalRequest.status !== "approved") {
+    const error = new Error("Only approved reservations can be cancelled by the owner");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  rentalRequest.status = "cancelled";
+  await rentalRequest.save();
+
+  await Book.findByIdAndUpdate(rentalRequest.book._id || rentalRequest.book, {
+    $set: { availabilityStatus: "available" }
+  });
+
+  await closeChatThreadForRequest(rentalRequest._id);
+
+  createNotification({
+    userId: rentalRequest.renter._id,
+    type: "rental_request_owner_cancelled",
+    message: buildCancelledRequestMessage(rentalRequest, "owner"),
+    relatedId: rentalRequest._id
+  });
+
+  const updatedRentalRequest = await RentalRequest.findById(rentalRequest._id)
+    .populate("book", "title author category listingType rentalPrice salePrice securityDeposit")
+    .populate("renter", "name phoneNumber phone");
+
+  const responsePayload = await attachChatMetadataToRequest(
+    formatRentalRequestActionResponse(updatedRentalRequest),
+    updatedRentalRequest
+  );
+
+  res.status(200).json({
+    message: "Reservation cancelled and book released successfully",
+    rentalRequest: responsePayload
+  });
+});
+
+const expireStaleRentalRequests = asyncHandler(async (req, res) => {
+  const cutoffDate = getPendingExpiryCutoffDate(req.body?.days);
+
+  const staleRequests = await RentalRequest.find({
+    status: "pending",
+    createdAt: { $lt: cutoffDate }
+  }).select("_id");
+
+  if (staleRequests.length === 0) {
+    res.status(200).json({
+      message: "No stale pending requests found",
+      expiredCount: 0
+    });
+    return;
+  }
+
+  const requestIds = staleRequests.map((request) => request._id);
+
+  await RentalRequest.updateMany(
+    {
+      _id: { $in: requestIds }
+    },
+    {
+      $set: {
+        status: "expired"
+      }
+    }
+  );
+
+  await Promise.all(requestIds.map((requestId) => closeChatThreadForRequest(requestId)));
+
+  res.status(200).json({
+    message: "Stale pending requests expired successfully",
+    expiredCount: requestIds.length
+  });
+});
 
 const approveRentalRequest = asyncHandler(async (req, res) => {
   validateRequest(req);
@@ -442,6 +590,12 @@ const startRentalRequest = asyncHandler(async (req, res) => {
 
       if (rentalRequest.status === "completed") {
         const error = new Error("This rental request has already been completed");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (FINAL_REQUEST_STATUSES.includes(rentalRequest.status)) {
+        const error = new Error("This rental request can no longer be started");
         error.statusCode = 400;
         throw error;
       }
@@ -804,9 +958,12 @@ const getIncomingRentalRequests = asyncHandler(async (req, res) => {
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalRequests / limit));
-  const responsePayload = await attachChatMetadataToRequests(
+  const responsePayload = await attachCurrentUserReviewsToRequests(
+    await attachChatMetadataToRequests(
     requests.map(formatIncomingRentalRequestListItem),
     requests
+    ),
+    req.user._id
   );
 
   res.status(200).json({
@@ -843,9 +1000,12 @@ const getOutgoingRentalRequests = asyncHandler(async (req, res) => {
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalRequests / limit));
-  const responsePayload = await attachChatMetadataToRequests(
+  const responsePayload = await attachCurrentUserReviewsToRequests(
+    await attachChatMetadataToRequests(
     requests.map(formatOutgoingRentalRequestListItem),
     requests
+    ),
+    req.user._id
   );
 
   res.status(200).json({
@@ -936,7 +1096,7 @@ const getOwnRentalRequestForBook = asyncHandler(async (req, res) => {
   const rentalRequest = await RentalRequest.findOne({
     book: req.params.bookId,
     renter: req.user._id,
-    status: { $in: ["pending", "approved", "active", "return_pending", "rejected", "completed"] }
+    status: { $in: ["pending", "approved", "active", "return_pending", "rejected", "completed", "cancelled", "expired"] }
   })
     .populate("book", "title")
     .populate("owner", "fullName name phoneNumber phone")
@@ -980,7 +1140,7 @@ const createRentalRequest = asyncHandler(async (req, res) => {
   const existingRequest = await RentalRequest.findOne({
     book: book._id,
     renter: req.user._id,
-    status: { $in: ["pending", "approved", "active", "return_pending"] }
+    status: { $in: ACTIVE_REQUEST_STATUSES }
   });
 
   if (existingRequest) {
@@ -1037,6 +1197,9 @@ module.exports = {
   getRenterActiveRentalRequests,
   approveRentalRequest,
   rejectRentalRequest,
+  cancelRentalRequest,
+  ownerCancelRentalRequest,
+  expireStaleRentalRequests,
   startRentalRequest,
   initiateRentalReturn,
   confirmRentalReturn

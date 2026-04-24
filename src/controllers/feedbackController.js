@@ -2,13 +2,26 @@ const Feedback = require("../models/Feedback");
 const asyncHandler = require("../middleware/asyncHandler");
 const validateRequest = require("../utils/validateRequest");
 
-const formatFeedbackResponse = (feedback) => ({
+const formatFeedbackResponse = (feedback, { includeUser = false } = {}) => ({
   id: feedback._id,
   type: feedback.type,
   message: feedback.message,
   page: feedback.page || "",
   status: feedback.status,
   userId: feedback.userId?._id || feedback.userId || null,
+  ...(includeUser
+    ? {
+        user: feedback.userId
+          ? {
+              id: feedback.userId._id || feedback.userId,
+              fullName: feedback.userId.fullName || feedback.userId.name || "",
+              name: feedback.userId.name || feedback.userId.fullName || "",
+              collegeName: feedback.userId.collegeName || "",
+              email: feedback.userId.email || ""
+            }
+          : null
+      }
+    : {}),
   createdAt: feedback.createdAt,
   updatedAt: feedback.updatedAt
 });
@@ -55,7 +68,54 @@ const getMyFeedback = asyncHandler(async (req, res) => {
   });
 });
 
+const getAllFeedback = asyncHandler(async (req, res) => {
+  validateRequest(req);
+
+  const filters = {};
+
+  if (req.query.type) {
+    filters.type = req.query.type;
+  }
+
+  if (req.query.status) {
+    filters.status = req.query.status;
+  }
+
+  const feedbackItems = await Feedback.find(filters)
+    .populate("userId", "fullName name collegeName email")
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    feedback: feedbackItems.map((item) => formatFeedbackResponse(item, { includeUser: true }))
+  });
+});
+
+const updateFeedbackStatus = asyncHandler(async (req, res) => {
+  validateRequest(req);
+
+  const feedback = await Feedback.findById(req.params.id).populate(
+    "userId",
+    "fullName name collegeName email"
+  );
+
+  if (!feedback) {
+    const error = new Error("Feedback not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  feedback.status = req.body.status;
+  await feedback.save();
+
+  res.status(200).json({
+    message: "Feedback status updated successfully",
+    feedback: formatFeedbackResponse(feedback, { includeUser: true })
+  });
+});
+
 module.exports = {
   createFeedback,
-  getMyFeedback
+  getMyFeedback,
+  getAllFeedback,
+  updateFeedbackStatus
 };

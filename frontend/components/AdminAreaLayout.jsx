@@ -11,6 +11,7 @@ const ADMIN_NAV_ITEMS = [
   { href: "/admin/users", label: "Users", description: "User management and account review" },
   { href: "/admin/books", label: "Books", description: "Catalog moderation and listing checks" },
   { href: "/admin/rentals", label: "Rentals", description: "Request and rental lifecycle oversight" },
+  { href: "/admin/feedback", label: "Feedback", description: "Platform feedback review and triage" },
   { href: "/admin/financial", label: "Financial", description: "Settlement and escrow visibility" },
   { href: "/admin/wallet-requests", label: "Wallet Requests", description: "Top-up and review workflow" }
 ];

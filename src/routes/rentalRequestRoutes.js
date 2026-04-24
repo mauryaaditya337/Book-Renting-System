@@ -10,6 +10,9 @@ const {
   getRenterActiveRentalRequests,
   approveRentalRequest,
   rejectRentalRequest,
+  cancelRentalRequest,
+  ownerCancelRentalRequest,
+  expireStaleRentalRequests,
   startRentalRequest,
   initiateRentalReturn,
   confirmRentalReturn
@@ -20,7 +23,7 @@ const router = express.Router();
 
 const allowedRentalRequestFields = ["book", "startDate", "endDate"];
 const allowedRentalRequestQueryParams = ["status", "page", "limit"];
-const allowedRentalRequestStatuses = ["pending", "approved", "active", "return_pending", "completed", "rejected"];
+const allowedRentalRequestStatuses = ["pending", "approved", "active", "return_pending", "completed", "rejected", "cancelled", "expired"];
 const allowedOwnerActiveRentalStatuses = ["approved", "active", "return_pending"];
 const allowedRenterActiveRentalStatuses = ["active", "return_pending"];
 
@@ -102,7 +105,7 @@ const getIncomingRentalRequestsValidation = [
   query("status")
     .optional()
     .isIn(allowedRentalRequestStatuses)
-    .withMessage("Status must be one of: pending, approved, active, return_pending, completed, rejected"),
+    .withMessage("Status must be one of: pending, approved, active, return_pending, completed, rejected, cancelled, expired"),
   query("page")
     .optional()
     .isInt({ min: 1 })
@@ -212,9 +215,12 @@ router.get("/active/owner", protect, getOwnerActiveRentalRequestsValidation, get
 router.get("/active/renter", protect, getRenterActiveRentalRequestsValidation, getRenterActiveRentalRequests);
 router.put("/:id/approve", protect, rentalRequestActionValidation, approveRentalRequest);
 router.put("/:id/reject", protect, rejectRentalRequestValidation, rejectRentalRequest);
+router.post("/:id/cancel", protect, rentalRequestActionValidation, cancelRentalRequest);
+router.post("/:id/owner-cancel", protect, rentalRequestActionValidation, ownerCancelRentalRequest);
 router.patch("/:id/start-rent", protect, rentalRequestActionValidation, startRentalRequest);
 router.patch("/:id/initiate-return", protect, rentalRequestActionValidation, initiateRentalReturn);
 router.patch("/:id/confirm-return", protect, rentalRequestActionValidation, confirmRentalReturn);
+router.post("/expire-stale", protect, expireStaleRentalRequests);
 router.post("/", protect, createRentalRequestValidation, createRentalRequest);
 
 module.exports = router;

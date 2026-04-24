@@ -1,7 +1,7 @@
 import { formatPrice, getApproxPerDayRent, roundPrice } from "@/lib/books";
 
 export const CURRENT_REQUEST_STATUSES = ["pending", "approved", "active", "return_pending"];
-export const HISTORY_REQUEST_STATUSES = ["completed", "rejected"];
+export const HISTORY_REQUEST_STATUSES = ["completed", "rejected", "cancelled", "expired"];
 
 export function formatRequestDate(value) {
   if (!value) {
@@ -43,6 +43,14 @@ export function getRequestStatusTone(status) {
 
   if (status === "completed") {
     return "bg-teal-50 text-teal-700 border-teal-200";
+  }
+
+  if (status === "cancelled") {
+    return "bg-slate-100 text-slate-700 border-slate-200";
+  }
+
+  if (status === "expired") {
+    return "bg-orange-50 text-orange-700 border-orange-200";
   }
 
   return "bg-rose-50 text-rose-700 border-rose-200";

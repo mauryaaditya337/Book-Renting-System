@@ -9,6 +9,10 @@ function buildErrorMessage(payload, fallbackMessage) {
     return payload.errors.map((error) => error.message).join(", ");
   }
 
+  if (Array.isArray(payload.details) && payload.details.length > 0) {
+    return payload.details.map((error) => error.message).join(", ");
+  }
+
   return payload.message || fallbackMessage;
 }
 
@@ -28,7 +32,11 @@ export async function apiRequest(path, options = {}) {
   if (!response.ok) {
     const error = new Error(buildErrorMessage(data, "Something went wrong."));
     error.status = response.status;
-    error.details = Array.isArray(data?.errors) ? data.errors : [];
+    error.details = Array.isArray(data?.errors)
+      ? data.errors
+      : Array.isArray(data?.details)
+        ? data.details
+        : [];
     error.payload = data;
     throw error;
   }

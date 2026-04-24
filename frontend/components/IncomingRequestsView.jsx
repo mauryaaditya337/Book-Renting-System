@@ -7,6 +7,7 @@ import { ProtectedPage } from "@/components/ProtectedPage";
 import { ToastViewport } from "@/components/ToastViewport";
 import { useAuth } from "@/components/AuthProvider";
 import { BookCover } from "@/components/BookCover";
+import { ReviewActionPanel } from "@/components/ReviewActionPanel";
 import { apiRequest } from "@/lib/api";
 import { formatPrice } from "@/lib/books";
 import {
@@ -33,7 +34,9 @@ const STATUS_FILTERS = [
   { value: "active", label: "Active" },
   { value: "return_pending", label: "Return Pending" },
   { value: "rejected", label: "Rejected" },
-  { value: "completed", label: "Completed" }
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "expired", label: "Expired" }
 ];
 
 export function IncomingRequestsView() {
@@ -165,6 +168,19 @@ export function IncomingRequestsView() {
     setRejectionReason("");
   };
 
+  const handleReviewCreated = (requestId, review) => {
+    setRequests((current) =>
+      current.map((request) =>
+        request.id === requestId
+          ? {
+              ...request,
+              currentUserReview: review
+            }
+          : request
+      )
+    );
+  };
+
   const currentRequests = requests.filter((request) => !isHistoricalRequestStatus(request.status));
   const historyRequests = requests.filter((request) => isHistoricalRequestStatus(request.status));
 
@@ -250,6 +266,7 @@ export function IncomingRequestsView() {
                 handleRejectStart={handleRejectStart}
                 handleRejectSubmit={handleRejectSubmit}
                 handleRejectCancel={handleRejectCancel}
+                handleReviewCreated={handleReviewCreated}
               />
             ) : (
               <div className="space-y-6">
@@ -278,6 +295,7 @@ export function IncomingRequestsView() {
                   handleRejectStart={handleRejectStart}
                   handleRejectSubmit={handleRejectSubmit}
                   handleRejectCancel={handleRejectCancel}
+                  handleReviewCreated={handleReviewCreated}
                 />
               </div>
             )}
@@ -355,6 +373,14 @@ function getStatusDetail(request) {
     return "This request was declined.";
   }
 
+  if (request.status === "cancelled") {
+    return "This reservation was cancelled before the rental started.";
+  }
+
+  if (request.status === "expired") {
+    return "This pending request expired before approval.";
+  }
+
   return "Review this request and take action if needed.";
 }
 
@@ -367,7 +393,8 @@ function RequestGrid({
   handleAction,
   handleRejectStart,
   handleRejectSubmit,
-  handleRejectCancel
+  handleRejectCancel,
+  handleReviewCreated
 }) {
   const safeRequests = requests.filter((request) => {
     if (!request?.book) {
@@ -382,8 +409,8 @@ function RequestGrid({
     <div className="grid gap-3.5 md:gap-4">
       {safeRequests.map((request) => {
         const isPending = request.status === "pending";
-        const isReturnPending = request.status === "return_pending";
         const isApproved = request.status === "approved";
+        const isReturnPending = request.status === "return_pending";
         const isSubmitting = activeRequestId === request.id;
         const isRejectingThisRequest = rejectingRequestId === request.id;
         const renterPhoneNumber = request.renter?.phoneNumber || "";
@@ -509,6 +536,16 @@ function RequestGrid({
                           </button>
                         </>
                       ) : null}
+                      {isApproved ? (
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => handleAction(request.id, "owner-cancel", undefined, "POST")}
+                          className="ui-btn-light w-full px-4 py-2"
+                        >
+                          {isSubmitting ? "Updating..." : "Cancel Reservation"}
+                        </button>
+                      ) : null}
                       {isReturnPending ? (
                         <button
                           type="button"
@@ -529,6 +566,14 @@ function RequestGrid({
                           WhatsApp
                         </a>
                       ) : null}
+                      {request.status === "completed" ? (
+                        <ReviewActionPanel
+                          requestId={request.id}
+                          revieweeName={renterName}
+                          existingReview={request.currentUserReview}
+                          onReviewCreated={(review) => handleReviewCreated?.(request.id, review)}
+                        />
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -539,6 +584,11 @@ function RequestGrid({
               <div className="mt-3.5 rounded-[1.35rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 sm:mt-4 sm:rounded-[1.5rem] sm:py-3.5">
                 <p className="font-medium">Rejection reason</p>
                 <p className="mt-1 leading-6">{request.rejectionReason}</p>
+              </div>
+            ) : null}
+            {request.status === "cancelled" ? (
+              <div className="mt-3.5 rounded-[1.35rem] border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700 sm:mt-4 sm:rounded-[1.5rem] sm:py-3.5">
+                Reservation cancelled. The book can be requested again if it is still listed.
               </div>
             ) : null}
 
@@ -682,6 +732,14 @@ function getIncomingLifecycleNote(request) {
 
   if (request.status === "rejected") {
     return "This request was declined, so the book remains available for other readers if your listing status allows it.";
+  }
+
+  if (request.status === "cancelled") {
+    return "The reservation was cancelled before pickup, so the book was released back to availability.";
+  }
+
+  if (request.status === "expired") {
+    return "The renter never moved this request forward, so it now sits in history as expired.";
   }
 
   return "Use the current status and book details together before taking the next action.";

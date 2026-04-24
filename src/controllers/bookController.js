@@ -3,6 +3,7 @@ const validateRequest = require("../utils/validateRequest");
 const asyncHandler = require("../middleware/asyncHandler");
 const { getCoverImage, getImagesFromPayload, getResponseImages } = require("../utils/bookImages");
 const { calculateDistanceKm, normalizeCoordinateInput } = require("../utils/location");
+const { getReviewSummaryForUser } = require("../services/reviewService");
 
 function getOwnerId(value) {
   if (!value) {
@@ -28,7 +29,7 @@ function getAvailabilityStatus(book) {
   return book?.availabilityStatus || "available";
 }
 
-const formatBookResponse = (book) => ({
+const formatBookResponse = (book, { ownerReviewSummary = null } = {}) => ({
   id: book._id,
   title: book.title,
   author: book.author,
@@ -58,7 +59,11 @@ const formatBookResponse = (book) => ({
       city: book.owner.city || "",
       bio: book.owner.bio || "",
       phoneNumber: book.owner.phoneNumber || " ",
-      name: book.owner.name || book.owner.fullName || " "
+      name: book.owner.name || book.owner.fullName || " ",
+      reviewSummary: ownerReviewSummary || {
+        averageRating: 0,
+        totalReviews: 0
+      }
     }
   : null,
   createdAt: book.createdAt,
@@ -115,8 +120,10 @@ const getBookById = asyncHandler(async (req, res) => {
     throw error;
   }
 
+  const ownerReviewSummary = await getReviewSummaryForUser(book.owner?._id || book.owner);
+
   res.status(200).json({
-    book: formatBookResponse(book)
+    book: formatBookResponse(book, { ownerReviewSummary })
   });
 });
 

@@ -7,6 +7,7 @@ import { ProtectedPage } from "@/components/ProtectedPage";
 import { ToastViewport } from "@/components/ToastViewport";
 import { useAuth } from "@/components/AuthProvider";
 import { BookCover } from "@/components/BookCover";
+import { ReviewActionPanel } from "@/components/ReviewActionPanel";
 import { apiRequest } from "@/lib/api";
 import { formatPrice } from "@/lib/books";
 import { getPrimaryBookImage, hydrateRequestBookImages } from "@/lib/bookImages";
@@ -39,6 +40,13 @@ const RENTER_ACTION_CONFIG = {
     label: "Initiate Return",
     loadingLabel: "Initiating return...",
     confirmMessage: "Initiate the return now? Use this when you are ready to hand the book back."
+  },
+  cancelRequest: {
+    action: "cancel",
+    method: "POST",
+    label: "Cancel Request",
+    loadingLabel: "Cancelling request...",
+    confirmMessage: "Cancel this request? This will stop the request flow and remove the reservation if the owner had already approved it."
   }
 };
 
@@ -143,6 +151,19 @@ function RequestsDashboardView({ mode = "current" }) {
     }
   };
 
+  const handleReviewCreated = (requestId, review) => {
+    setRequests((current) =>
+      current.map((request) =>
+        request.id === requestId
+          ? {
+              ...request,
+              currentUserReview: review
+            }
+          : request
+      )
+    );
+  };
+
   const visibleStatuses =
     mode === "history" ? HISTORY_REQUEST_STATUSES : CURRENT_REQUEST_STATUSES;
   const visibleRequests = requests.filter((request) => visibleStatuses.includes(request.status));
@@ -212,6 +233,7 @@ function RequestsDashboardView({ mode = "current" }) {
             requests={visibleRequests}
             activeRequestId={activeRequestId}
             onRequestAction={handleRequestAction}
+            onReviewCreated={handleReviewCreated}
           />
         )}
       </section>
@@ -252,6 +274,14 @@ function getStatusDetail(request, isSellRequest) {
     return "This request was not approved.";
   }
 
+  if (request.status === "cancelled") {
+    return "This request was cancelled and is now closed.";
+  }
+
+  if (request.status === "expired") {
+    return "This request expired before it was completed.";
+  }
+
   return "Track the latest status of this request here.";
 }
 
@@ -263,7 +293,14 @@ function getDateSummary(request, isSellRequest) {
   return `${formatRequestDate(request.startDate)} - ${formatRequestDate(request.endDate)}`;
 }
 
-function RequestSection({ title, description, requests, activeRequestId, onRequestAction }) {
+function RequestSection({
+  title,
+  description,
+  requests,
+  activeRequestId,
+  onRequestAction,
+  onReviewCreated
+}) {
   const safeRequests = requests.filter((request) => {
     if (!request?.book) {
       console.warn("Missing book in request:", request?.id || request?._id);
@@ -289,6 +326,7 @@ function RequestSection({ title, description, requests, activeRequestId, onReque
           const isSellRequest = request.book?.listingType === "sell";
           const isSubmitting = activeRequestId === request.id;
           const primaryRenterAction = getPrimaryRenterAction(request, isSellRequest);
+          const cancelRenterAction = getCancelRenterAction(request);
           const pricingDetails = getRequestPricingDetails(request);
           const statusLabel = toRequestStatusLabel(request.status);
           const statusTone = getRequestStatusTone(request.status);
@@ -412,6 +450,16 @@ function RequestSection({ title, description, requests, activeRequestId, onReque
                             Request Rejected
                           </div>
                         ) : null}
+                        {request.status === "cancelled" ? (
+                          <div className="request-static-action border-slate-200 bg-slate-100 text-slate-700">
+                            Request Cancelled
+                          </div>
+                        ) : null}
+                        {request.status === "expired" ? (
+                          <div className="request-static-action border-orange-200 bg-orange-50 text-orange-700">
+                            Request Expired
+                          </div>
+                        ) : null}
                         {primaryRenterAction ? (
                           <button
                             type="button"
@@ -420,6 +468,16 @@ function RequestSection({ title, description, requests, activeRequestId, onReque
                             className="ui-btn-dark w-full px-4 py-2"
                           >
                             {isSubmitting ? primaryRenterAction.loadingLabel : primaryRenterAction.label}
+                          </button>
+                        ) : null}
+                        {cancelRenterAction ? (
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={() => onRequestAction(request.id, cancelRenterAction.key)}
+                            className="ui-btn-light w-full px-4 py-2"
+                          >
+                            {isSubmitting ? cancelRenterAction.loadingLabel : cancelRenterAction.label}
                           </button>
                         ) : null}
                         {request.status === "return_pending" && !isSellRequest ? (
@@ -433,9 +491,17 @@ function RequestSection({ title, description, requests, activeRequestId, onReque
                           </div>
                         ) : null}
                         {request.status === "completed" ? (
-                          <div className="request-static-action border-teal-200 bg-teal-50 text-teal-700">
-                            Completed
-                          </div>
+                          <>
+                            <div className="request-static-action border-teal-200 bg-teal-50 text-teal-700">
+                              Completed
+                            </div>
+                            <ReviewActionPanel
+                              requestId={request.id}
+                              revieweeName={ownerName}
+                              existingReview={request.currentUserReview}
+                              onReviewCreated={(review) => onReviewCreated?.(request.id, review)}
+                            />
+                          </>
                         ) : null}
                       </div>
                     </div>
@@ -488,6 +554,14 @@ function getLifecycleNote(request, isSellRequest) {
     return "The owner did not approve this request, so no rental or handoff can proceed from it.";
   }
 
+  if (request.status === "cancelled") {
+    return "The request was cancelled before the rental started, so the flow ended without a handoff.";
+  }
+
+  if (request.status === "expired") {
+    return "The request sat too long without progress and was closed automatically as stale history.";
+  }
+
   return "Follow the current status here to understand the next safe step.";
 }
 
@@ -507,6 +581,17 @@ function getPrimaryRenterAction(request, isSellRequest) {
     return {
       key: "initiateReturn",
       ...RENTER_ACTION_CONFIG.initiateReturn
+    };
+  }
+
+  return null;
+}
+
+function getCancelRenterAction(request) {
+  if (request.status === "pending" || request.status === "approved") {
+    return {
+      key: "cancelRequest",
+      ...RENTER_ACTION_CONFIG.cancelRequest
     };
   }
 

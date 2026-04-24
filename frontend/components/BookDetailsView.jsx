@@ -20,6 +20,7 @@ import {
   getListingType,
   toTitleCase
 } from "@/lib/books";
+import { formatAverageRating, renderStars } from "@/lib/reviews";
 
 export function BookDetailsView({ id }) {
   const { isAuthenticated, token, user } = useAuth();
@@ -165,6 +166,8 @@ export function BookDetailsView({ id }) {
   const ownerCurrentDegree = displayBook.owner?.currentDegree || "";
   const ownerCity = displayBook.owner?.city || "";
   const ownerBio = displayBook.owner?.bio || "";
+  const ownerAverageRating = Number(displayBook.owner?.reviewSummary?.averageRating || 0);
+  const ownerTotalReviews = Number(displayBook.owner?.reviewSummary?.totalReviews || 0);
   const meetupLocation = displayBook.meetupLocation || "";
   const depositNote = displayBook.depositNote || "";
   const pickupLocationName = displayBook.pickupLocationName || "";
@@ -175,8 +178,14 @@ export function BookDetailsView({ id }) {
   const hasReturnPendingRequest = requestStatus === "return_pending";
   const hasRejectedRequest = requestStatus === "rejected";
   const hasCompletedRequest = requestStatus === "completed";
-  const canRequestAgain = hasRejectedRequest || hasCompletedRequest;
+  const hasCancelledRequest = requestStatus === "cancelled";
+  const hasExpiredRequest = requestStatus === "expired";
+  const canRequestAgain = hasRejectedRequest || hasCompletedRequest || hasCancelledRequest || hasExpiredRequest;
   const ownerTrustLine = [ownerCollegeName, ownerCurrentDegree, ownerCity].filter(Boolean).join(" - ");
+  const ownerTrustRatingLine =
+    ownerTotalReviews > 0
+      ? `${formatAverageRating(ownerAverageRating)} rating from ${ownerTotalReviews} review${ownerTotalReviews > 1 ? "s" : ""}`
+      : "No reviews yet";
   const primaryCtaLabel = listingType === "sell" ? "Buy Book" : "Request Book";
   const stickyPriceLabel = listingType === "sell" ? "One-time price" : "Per day";
   const stickyPriceValue = priceSummary.approxDailyValue || priceSummary.primaryValue;
@@ -444,6 +453,7 @@ export function BookDetailsView({ id }) {
                 <div className="mt-5 grid gap-3 xl:grid-cols-2">
                   <InfoBlock label="Listing type" value={toTitleCase(listingType)} />
                   <InfoBlock label="Location" value={displayBook.location || "Not provided"} />
+                  <InfoBlock label="Owner rating" value={ownerTrustRatingLine} />
                   {pickupLocationName ? <InfoBlock label="Pickup location" value={pickupLocationName} /> : null}
                 </div>
               </div>
@@ -462,6 +472,14 @@ export function BookDetailsView({ id }) {
               <p className="text-sm font-medium uppercase tracking-[0.28em] text-teal-700">Owner</p>
               <div className="mt-4 space-y-3">
                 <InfoBlock label="Owner name" value={ownerFullName} />
+                <InfoBlock
+                  label="Rating"
+                  value={
+                    ownerTotalReviews > 0
+                      ? `${renderStars(ownerAverageRating)} ${formatAverageRating(ownerAverageRating)} (${ownerTotalReviews} review${ownerTotalReviews > 1 ? "s" : ""})`
+                      : "No reviews yet"
+                  }
+                />
                 <InfoBlock label="College name" value={ownerCollegeName} />
                 {ownerCurrentDegree ? <InfoBlock label="Current degree" value={ownerCurrentDegree} /> : null}
                 {ownerBio ? <InfoBlock label="Bio" value={ownerBio} /> : null}
@@ -499,6 +517,8 @@ export function BookDetailsView({ id }) {
                   hasActiveRequest={hasActiveRequest}
                   hasReturnPendingRequest={hasReturnPendingRequest}
                   hasCompletedRequest={hasCompletedRequest}
+                  hasCancelledRequest={hasCancelledRequest}
+                  hasExpiredRequest={hasExpiredRequest}
                   canRequestAgain={canRequestAgain}
                   ownRentalRequest={ownRentalRequest}
                   defaultActionLabel={primaryCtaLabel}
@@ -589,6 +609,8 @@ function RequestActionArea({
   hasActiveRequest,
   hasReturnPendingRequest,
   hasCompletedRequest,
+  hasCancelledRequest,
+  hasExpiredRequest,
   canRequestAgain,
   ownRentalRequest,
   defaultActionLabel
@@ -794,6 +816,64 @@ function CommunicationActions({
 }) {
   if (!canShowCommunicationActions) {
     return null;
+  }
+
+  if (hasCancelledRequest) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-center text-sm font-semibold text-slate-700">
+          Request Cancelled
+        </div>
+        <div className="ui-trust-card">
+          <p className="ui-trust-label">Status confirmed</p>
+          <p className="ui-trust-copy">
+            This earlier request was cancelled before the rental started, so the book can move through a fresh request flow.
+          </p>
+        </div>
+        <p className="text-sm leading-6 text-slate-600">
+          Your previous request was cancelled. You can request this book again whenever it is available.
+        </p>
+        {canRequestAgain ? (
+          <ActionButton
+            isAuthenticated={isAuthenticated}
+            handleLoginRedirect={handleLoginRedirect}
+            href={`/books/${bookId}/request`}
+            disabled={!isRequestAvailable || isLoadingOwnRequest}
+          >
+            {isLoadingOwnRequest ? "Checking request status..." : isRequestAvailable ? "Request Again" : "Currently Unavailable"}
+          </ActionButton>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (hasExpiredRequest) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-center text-sm font-semibold text-orange-700">
+          Request Expired
+        </div>
+        <div className="ui-trust-card">
+          <p className="ui-trust-label">Status confirmed</p>
+          <p className="ui-trust-copy">
+            This earlier request stayed pending too long and expired, so the next request starts from a clean state.
+          </p>
+        </div>
+        <p className="text-sm leading-6 text-slate-600">
+          Your previous request expired before it moved forward. You can submit a fresh request whenever the book is available.
+        </p>
+        {canRequestAgain ? (
+          <ActionButton
+            isAuthenticated={isAuthenticated}
+            handleLoginRedirect={handleLoginRedirect}
+            href={`/books/${bookId}/request`}
+            disabled={!isRequestAvailable || isLoadingOwnRequest}
+          >
+            {isLoadingOwnRequest ? "Checking request status..." : isRequestAvailable ? "Request Again" : "Currently Unavailable"}
+          </ActionButton>
+        ) : null}
+      </div>
+    );
   }
 
   return (
