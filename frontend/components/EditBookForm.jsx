@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { BookImageUploader } from "@/components/BookImageUploader";
 import { FieldMessage } from "@/components/FieldMessage";
 import { ProtectedPage } from "@/components/ProtectedPage";
 import { useAuth } from "@/components/AuthProvider";
@@ -234,42 +235,11 @@ export function EditBookForm({ bookId }) {
     setFormError("");
   };
 
-  const handleImageChange = (index, value) => {
+  const handleImagesChange = (nextImages) => {
     setFormData((current) => ({
       ...current,
-      images: withAtLeastOneImageField(current.images).map((image, imageIndex) =>
-        imageIndex === index ? value : image
-      )
+      images: withAtLeastOneImageField(nextImages)
     }));
-    setFieldErrors((current) => ({ ...current, images: "" }));
-    setFormError("");
-  };
-
-  const handleAddImageField = () => {
-    setFormData((current) => {
-      if (current.images.length >= MAX_IMAGE_FIELDS) {
-        return current;
-      }
-
-      return {
-        ...current,
-        images: [...withAtLeastOneImageField(current.images), ""]
-      };
-    });
-    setFieldErrors((current) => ({ ...current, images: "" }));
-  };
-
-  const handleRemoveImageField = (index) => {
-    setFormData((current) => {
-      const nextImages = withAtLeastOneImageField(current.images).filter(
-        (_, imageIndex) => imageIndex !== index
-      );
-
-      return {
-        ...current,
-        images: nextImages.length > 0 ? nextImages : [""]
-      };
-    });
     setFieldErrors((current) => ({ ...current, images: "" }));
     setFormError("");
   };
@@ -520,12 +490,12 @@ export function EditBookForm({ bookId }) {
                   </div>
                 </FormSection>
 
-                <ImageUrlsField
+                <BookImageUploader
                   images={formData.images}
                   error={fieldErrors.images}
-                  onAddImage={handleAddImageField}
-                  onChangeImage={handleImageChange}
-                  onRemoveImage={handleRemoveImageField}
+                  token={token}
+                  maxImages={MAX_IMAGE_FIELDS}
+                  onChange={handleImagesChange}
                 />
 
                 <div className="space-y-4">
@@ -642,66 +612,6 @@ function TextAreaField({ error, label, ...props }) {
       <textarea {...props} rows={5} className="ui-textarea" />
       <FieldMessage message={error} />
     </label>
-  );
-}
-
-function ImageUrlsField({ images, error, onAddImage, onChangeImage, onRemoveImage }) {
-  const canAddMore = images.length < MAX_IMAGE_FIELDS;
-
-  return (
-    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5 sm:col-span-2">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-700">Book images</p>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            Add 1 to 3 image URLs. The first image will be used as the cover image.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onAddImage}
-          disabled={!canAddMore}
-          className="ui-btn-light px-4 py-2"
-        >
-          Add image
-        </button>
-      </div>
-
-      <div className="mt-5 space-y-4">
-        {images.map((image, index) => (
-          <div
-            key={`edit-image-field-${index}`}
-            className="rounded-[1.25rem] border border-white/70 bg-white p-4 shadow-sm"
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-              <label className="block flex-1">
-                <span className="mb-2 block text-sm font-medium text-slate-700">
-                  {index === 0 ? "Cover image URL" : `Image URL ${index + 1}`}
-                </span>
-                <input
-                  type="url"
-                  value={image}
-                  onChange={(event) => onChangeImage(index, event.target.value)}
-                  placeholder={`https://example.com/book-image-${index + 1}.jpg`}
-                  className="ui-input"
-                />
-              </label>
-
-              <button
-                type="button"
-                onClick={() => onRemoveImage(index)}
-                disabled={images.length === 1}
-                className="ui-btn-danger px-4 py-3"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <FieldMessage message={error} />
-    </div>
   );
 }
 

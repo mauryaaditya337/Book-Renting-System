@@ -31,6 +31,7 @@ export function AppShell({ children }) {
 
   const authenticatedLinks = [
     { href: "/my-requests", label: "My Requests", shortLabel: "Requests", icon: RequestsIcon },
+    { href: "/my-orders", label: "My Orders", shortLabel: "Orders", icon: OrdersIcon },
     { href: "/my-chats", label: "My Chats", shortLabel: "Chats", icon: ChatIcon },
     { href: "/my-listings", label: "My Listings", shortLabel: "Listings", icon: ListingsIcon },
     { href: "/incoming-requests", label: "Incoming", shortLabel: "Incoming", icon: InboxIcon },
@@ -52,6 +53,7 @@ export function AppShell({ children }) {
     { href: "/my-listings", label: "My Listings" },
     { href: "/my-chats", label: "My Chats" },
     { href: "/my-requests", label: "My Requests" },
+    { href: "/my-orders", label: "My Orders" },
     { href: "/my-feedback", label: "My Feedback" }
   ];
 
@@ -561,6 +563,16 @@ function RequestsIcon({ className = "" }) {
     <svg viewBox="0 0 20 20" aria-hidden="true" className={className}>
       <path d="M5 4.5h10v11H5z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
       <path d="M7.5 8h5M7.5 11h5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+function OrdersIcon({ className = "" }) {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" className={className}>
+      <path d="M4.5 5.5h11v9h-11z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+      <path d="M7 8.5h6M7 11.5h4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+      <path d="m12.5 4 3 2.5-3 2.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
     </svg>
   );
 }

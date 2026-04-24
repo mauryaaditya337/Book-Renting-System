@@ -15,9 +15,10 @@ import { buildWhatsAppUrl, canUseWhatsApp } from "@/lib/contact";
 import {
   formatRequestDate,
   formatRequestDateTime,
+  HISTORY_REQUEST_STATUSES,
+  CURRENT_REQUEST_STATUSES,
   getRequestPricingDetails,
   getRequestStatusTone,
-  isHistoricalRequestStatus,
   toRequestStatusLabel
 } from "@/lib/rentalRequests";
 
@@ -42,6 +43,14 @@ const RENTER_ACTION_CONFIG = {
 };
 
 export function MyRequestsView() {
+  return <RequestsDashboardView mode="current" />;
+}
+
+export function MyOrdersView() {
+  return <RequestsDashboardView mode="history" />;
+}
+
+function RequestsDashboardView({ mode = "current" }) {
   const { token } = useAuth();
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,8 +143,10 @@ export function MyRequestsView() {
     }
   };
 
-  const currentRequests = requests.filter((request) => !isHistoricalRequestStatus(request.status));
-  const historyRequests = requests.filter((request) => isHistoricalRequestStatus(request.status));
+  const visibleStatuses =
+    mode === "history" ? HISTORY_REQUEST_STATUSES : CURRENT_REQUEST_STATUSES;
+  const visibleRequests = requests.filter((request) => visibleStatuses.includes(request.status));
+  const isOrdersMode = mode === "history";
 
   return (
     <ProtectedPage>
@@ -166,14 +177,15 @@ export function MyRequestsView() {
           <div className="request-page-toolbar flex flex-col gap-3.5 lg:flex-row lg:justify-between">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-teal-700">
-                My Requests
+                {isOrdersMode ? "My Orders" : "My Requests"}
               </p>
               <h1 className="mt-2 text-[1.85rem] font-semibold text-slate-900 sm:text-[2.25rem]">
-                Track your outgoing book requests
+                {isOrdersMode ? "Review your request history" : "Track your outgoing book requests"}
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                Review the books you have requested, who owns them, and the current request
-                status.
+                {isOrdersMode
+                  ? "See your completed and rejected requests in one place, including finished rentals and rejection details."
+                  : "Review the books you have requested, who owns them, and the current request status."}
               </p>
             </div>
 
@@ -187,25 +199,20 @@ export function MyRequestsView() {
           <LoadingState />
         ) : errorMessage ? (
           <ErrorState message={errorMessage} />
-        ) : requests.length === 0 ? (
-          <EmptyState />
+        ) : visibleRequests.length === 0 ? (
+          <EmptyState mode={mode} />
         ) : (
-          <div className="space-y-6">
-            <RequestSection
-              title="Current requests"
-              description="Pending, approved, active, and return-confirmation steps stay grouped here until the flow is finished."
-              requests={currentRequests}
-              activeRequestId={activeRequestId}
-              onRequestAction={handleRequestAction}
-            />
-            <RequestSection
-              title="History"
-              description="Completed and rejected requests move here so your ongoing items stay easy to scan."
-              requests={historyRequests}
-              activeRequestId={activeRequestId}
-              onRequestAction={handleRequestAction}
-            />
-          </div>
+          <RequestSection
+            title={isOrdersMode ? "Order history" : "Current requests"}
+            description={
+              isOrdersMode
+                ? "Completed rentals and rejected requests stay here so your active flow remains uncluttered."
+                : "Pending, approved, active, and return-confirmation steps stay grouped here until the flow is finished."
+            }
+            requests={visibleRequests}
+            activeRequestId={activeRequestId}
+            onRequestAction={handleRequestAction}
+          />
         )}
       </section>
     </ProtectedPage>
@@ -535,25 +542,30 @@ function ErrorState({ message }) {
   );
 }
 
-function EmptyState() {
+function EmptyState({ mode = "current" }) {
+  const isOrdersMode = mode === "history";
+
   return (
     <div className="request-empty-state">
       <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="request-empty-main">
-          <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">My Requests</p>
+          <p className="text-sm font-medium uppercase tracking-[0.3em] text-teal-700">
+            {isOrdersMode ? "My Orders" : "My Requests"}
+          </p>
           <h2 className="mt-4 text-2xl font-semibold text-slate-900 sm:text-3xl">
-            No outgoing requests yet
+            {isOrdersMode ? "No order history yet" : "No outgoing requests yet"}
           </h2>
           <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
-            Once you request a book, it will show up here with its status, rental timeline, and
-            next actions in one place.
+            {isOrdersMode
+              ? "Completed rentals and rejected requests will appear here once your request flow has a final outcome."
+              : "Once you request a book, it will show up here with its status, rental timeline, and next actions in one place."}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/books" className="ui-btn-primary">
               Browse books
             </Link>
-            <Link href="/active-rentals" className="ui-btn-secondary">
-              View active rentals
+            <Link href={isOrdersMode ? "/my-requests" : "/active-rentals"} className="ui-btn-secondary">
+              {isOrdersMode ? "View current requests" : "View active rentals"}
             </Link>
           </div>
         </div>
@@ -562,13 +574,17 @@ function EmptyState() {
           <div className="request-empty-panel">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-500">How this helps</p>
             <p className="mt-2 text-sm font-medium text-slate-800">
-              Track approvals, returns, and completed rentals without digging through details.
+              {isOrdersMode
+                ? "Keep past outcomes separate so completed and rejected requests stay easy to review."
+                : "Track approvals, returns, and active rental steps without digging through older outcomes."}
             </p>
           </div>
           <div className="request-empty-panel">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-500">What to do next</p>
             <p className="mt-2 text-sm font-medium text-slate-800">
-              Explore listings, request a book you want, and come back here to follow the flow.
+              {isOrdersMode
+                ? "Finish a rental or review current requests, then come back here to see the final history."
+                : "Explore listings, request a book you want, and come back here to follow the flow."}
             </p>
           </div>
         </div>

@@ -13,10 +13,12 @@ function buildErrorMessage(payload, fallbackMessage) {
 }
 
 export async function apiRequest(path, options = {}) {
+  const isFormDataBody = typeof FormData !== "undefined" && options.body instanceof FormData;
+
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormDataBody ? {} : { "Content-Type": "application/json" }),
       ...(options.headers || {})
     }
   });

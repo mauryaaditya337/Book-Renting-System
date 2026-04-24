@@ -1,6 +1,28 @@
 const asyncHandler = require("../middleware/asyncHandler");
 const { MAX_BOOK_IMAGES, MIN_BOOK_IMAGES } = require("../utils/bookImages");
-const { uploadImages } = require("../services/uploadService");
+const { uploadBookImageBuffer } = require("../utils/cloudinary");
+
+const sanitizeUploadResponse = (payload = {}) => ({
+  imageUrl: payload.imageUrl,
+  publicId: payload.publicId
+});
+
+const uploadSingleBookImageToCloudinary = asyncHandler(async (req, res) => {
+  const file = req.file;
+
+  if (!file) {
+    const error = new Error("Image file is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const uploadedImage = await uploadBookImageBuffer(file);
+
+  res.status(200).json({
+    success: true,
+    ...sanitizeUploadResponse(uploadedImage)
+  });
+});
 
 const uploadBookImagesToCloudinary = asyncHandler(async (req, res) => {
   const files = req.files || [];
@@ -17,9 +39,15 @@ const uploadBookImagesToCloudinary = asyncHandler(async (req, res) => {
     throw error;
   }
 
-  const images = await uploadImages(files);
+  const uploadedImages = await Promise.all(
+    files.map((file) => uploadBookImageBuffer(file))
+  );
+  const images = uploadedImages.map((image) => image.imageUrl);
 
   res.status(200).json({ images });
 });
 
-module.exports = { uploadBookImagesToCloudinary };
+module.exports = {
+  uploadBookImagesToCloudinary,
+  uploadSingleBookImageToCloudinary
+};
